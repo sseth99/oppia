@@ -161,12 +161,12 @@ fi
 rm assets/constants.ts.bak
 rm feconf.py.bak
 
-# Start a selenium server using chromedriver 2.41.
+# Start a selenium server using chromedriver 79.0.3945.36.
 # The 'detach' option continues the flow once the server is up and runnning.
 # The 'quiet' option prints only the necessary information about the server start-up
 # process.
-node_modules/.bin/webdriver-manager update --versions.chrome 2.41
-node_modules/.bin/webdriver-manager start --versions.chrome 2.41 --detach --quiet
+node_modules/.bin/webdriver-manager update --versions.chrome 79.0.3945.36
+node_modules/.bin/webdriver-manager start --versions.chrome 79.0.3945.36 --detach --quiet
 
 # Start a selenium process. The program sends thousands of lines of useless
 # info logs to stderr so we discard them.
