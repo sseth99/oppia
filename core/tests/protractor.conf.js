@@ -219,7 +219,8 @@ exports.config = {
   capabilities: {
     browserName: 'chrome',
     chromeOptions: {
-      args: ['--lang=en-EN', '--window-size=1285x1000']
+      args: ['--lang=en-EN', '--window-size=1285x1000'],
+      w3c: false
     },
     prefs: {
       intl: {
