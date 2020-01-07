@@ -188,7 +188,7 @@ fi
 # Credit: http://stackoverflow.com/questions/192249
 # Passing different suites and sharding parameters for tests.
 SUITE="full"
-SHARDING=true
+SHARDING=false
 SHARD_INSTANCES=3
 for j in "$@"; do
   # Match each space-separated argument passed to the shell file to a separate
