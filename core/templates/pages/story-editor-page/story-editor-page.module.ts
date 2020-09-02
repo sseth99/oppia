@@ -19,24 +19,28 @@
 import 'core-js/es7/reflect';
 import 'zone.js';
 
-import { Component, NgModule, StaticProvider } from '@angular/core';
+import 'angular-ui-sortable';
+import uiValidate from 'angular-ui-validate';
+import 'third-party-imports/dnd-lists.import';
+
+angular.module('oppia', [
+  require('angular-cookies'), 'dndLists', 'headroom', 'ngAnimate',
+  'ngMaterial', 'ngSanitize', 'ngTouch', 'pascalprecht.translate',
+  'toastr', 'ui.bootstrap', 'ui.codemirror', 'ui.sortable',
+  uiValidate
+]);
+
+import { NgModule, StaticProvider } from '@angular/core';
 import { BrowserModule } from '@angular/platform-browser';
 import { downgradeComponent } from '@angular/upgrade/static';
 import { HttpClientModule } from '@angular/common/http';
 import { HTTP_INTERCEPTORS } from '@angular/common/http';
 import { RequestInterceptor } from 'services/request-interceptor.service';
-
-// This component is needed to force-bootstrap Angular at the beginning of the
-// app.
-@Component({
-  selector: 'service-bootstrap',
-  template: ''
-})
-export class ServiceBootstrapComponent {}
+import { SharedComponentsModule } from 'components/shared-component.module';
+import { OppiaAngularRootComponent } from
+  'components/oppia-angular-root.component';
 
 import { AppConstants } from 'app.constants';
-import { EditorDomainConstants } from
-  'domain/editor/editor-domain.constants';
 import { InteractionsExtensionsConstants } from
   'interactions/interactions-extension.constants';
 import { ObjectsDomainConstants } from
@@ -50,18 +54,18 @@ import { StoryEditorPageConstants } from
 @NgModule({
   imports: [
     BrowserModule,
-    HttpClientModule
+    HttpClientModule,
+    SharedComponentsModule
   ],
   declarations: [
-    ServiceBootstrapComponent
+    OppiaAngularRootComponent
   ],
   entryComponents: [
-    ServiceBootstrapComponent
+    OppiaAngularRootComponent
   ],
   providers: [
     AppConstants,
     InteractionsExtensionsConstants,
-    EditorDomainConstants,
     ObjectsDomainConstants,
     ServicesConstants,
     SkillDomainConstants,
@@ -90,17 +94,12 @@ const downgradedModule = downgradeModule(bootstrapFn);
 
 declare var angular: ng.IAngularStatic;
 
-angular.module('oppia', [
-  'dndLists', 'headroom', 'infinite-scroll', 'ngAnimate',
-  'ngAudio', require('angular-cookies'), 'ngJoyRide', 'ngMaterial',
-  'ngSanitize', 'ngTouch', 'pascalprecht.translate',
-  'toastr', 'ui.bootstrap', 'ui.codemirror', 'ui.sortable', 'ui.tree',
-  'ui.validate', downgradedModule
-])
+angular.module('oppia').requires.push(downgradedModule);
+
+angular.module('oppia').directive(
   // This directive is the downgraded version of the Angular component to
   // bootstrap the Angular 8.
-  .directive(
-    'serviceBootstrap',
-    downgradeComponent({
-      component: ServiceBootstrapComponent
-    }) as angular.IDirectiveFactory);
+  'oppiaAngularRoot',
+  downgradeComponent({
+    component: OppiaAngularRootComponent
+  }) as angular.IDirectiveFactory);

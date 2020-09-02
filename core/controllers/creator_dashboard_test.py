@@ -46,11 +46,58 @@ import python_utils
 taskqueue_services = models.Registry.import_taskqueue_services()
 
 
+class OldNotificationsDashboardRedirectPageTest(test_utils.GenericTestBase):
+    """Test for redirecting the old notifications dashboard page URL
+    to the new one.
+    """
+
+    def test_old_notifications_dashboard_page_url(self):
+        """Test to validate that the old notifications dashboard page url
+        redirects to the new one.
+        """
+        response = self.get_html_response(
+            '/notifications_dashboard', expected_status_int=301)
+        self.assertEqual(
+            'http://localhost/notifications', response.headers['location'])
+
+
+class OldContributorDashboardRedirectPageTest(test_utils.GenericTestBase):
+    """Test for redirecting the old contributor dashboard page URL
+    to the new one.
+    """
+
+    def test_old_contributor_dashboard_page_url(self):
+        """Test to validate that the old contributor dashboard page url
+        redirects to the new one.
+        """
+        response = self.get_html_response(
+            '/contributor_dashboard', expected_status_int=301)
+        self.assertEqual(
+            'http://localhost/contributor-dashboard',
+            response.headers['location'])
+
+
+class OldCreatorDashboardRedirectPageTest(test_utils.GenericTestBase):
+    """Test for redirecting the old creator dashboard page URL
+    to the new one.
+    """
+
+    def test_old_creator_dashboard_page_url(self):
+        """Test to validate that the old creator dashboard page url redirects
+        to the new one.
+        """
+        response = self.get_html_response(
+            '/creator_dashboard', expected_status_int=301)
+        self.assertEqual(
+            'http://localhost/creator-dashboard', response.headers['location'])
+
+
 class MockUserStatsAggregator(
         user_jobs_continuous.UserStatsAggregator):
     """A modified UserStatsAggregator that does not start a new
      batch job when the previous one has finished.
     """
+
     @classmethod
     def _get_batch_job_manager_class(cls):
         return MockUserStatsMRJobManager
@@ -72,21 +119,21 @@ class HomePageTests(test_utils.GenericTestBase):
 
     def test_logged_out_homepage(self):
         """Test the logged-out version of the home page."""
-        response = self.get_html_response('/', expected_status_int=302)
-
-        self.assertIn('splash', response.headers['location'])
+        response = self.get_html_response('/')
+        self.assertEqual(response.status_int, 200)
+        self.assertIn('</splash-page>', response)
 
     def test_notifications_dashboard_redirects_for_logged_out_users(self):
         """Test the logged-out view of the notifications dashboard."""
         response = self.get_html_response(
-            '/notifications_dashboard', expected_status_int=302)
+            '/notifications', expected_status_int=302)
         # This should redirect to the login page.
         self.assertIn('signup', response.headers['location'])
-        self.assertIn('notifications_dashboard', response.headers['location'])
+        self.assertIn('notifications', response.headers['location'])
 
         self.login('reader@example.com')
         self.get_html_response(
-            '/notifications_dashboard', expected_status_int=302)
+            '/notifications', expected_status_int=302)
         # This should redirect the user to complete signup.
         self.logout()
 
@@ -95,7 +142,7 @@ class HomePageTests(test_utils.GenericTestBase):
         self.signup(self.EDITOR_EMAIL, self.EDITOR_USERNAME)
 
         self.login(self.EDITOR_EMAIL)
-        self.get_html_response('/notifications_dashboard')
+        self.get_html_response('/notifications')
         self.logout()
 
 
@@ -706,30 +753,21 @@ class CreatorDashboardHandlerTests(test_utils.GenericTestBase):
 
     def test_get_topic_summary_dicts_with_new_structure_players_enabled(self):
         self.login(self.OWNER_EMAIL)
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_PLAYERS', True):
-            response = self.get_json(feconf.CREATOR_DASHBOARD_DATA_URL)
-            self.assertEqual(len(response['topic_summary_dicts']), 0)
-            self.save_new_topic(
-                'topic_id', self.owner_id, name='Name',
-                description='Description',
-                canonical_story_ids=['story_id_1', 'story_id_2'],
-                additional_story_ids=['story_id_3'],
-                uncategorized_skill_ids=['skill_id_1', 'skill_id_2'],
-                subtopics=[], next_subtopic_id=1)
-            response = self.get_json(feconf.CREATOR_DASHBOARD_DATA_URL)
-            self.assertEqual(len(response['topic_summary_dicts']), 1)
-            self.assertTrue(isinstance(response['topic_summary_dicts'], list))
-            self.assertEqual(response['topic_summary_dicts'][0]['name'], 'Name')
-            self.assertEqual(
-                response['topic_summary_dicts'][0]['id'], 'topic_id')
-        self.logout()
-
-    def test_get_no_topic_summary_dicts_with_new_structure_players_disabled(
-            self):
-        self.login(self.OWNER_EMAIL)
-        with self.swap(constants, 'ENABLE_NEW_STRUCTURE_PLAYERS', False):
-            response = self.get_json(feconf.CREATOR_DASHBOARD_DATA_URL)
-            self.assertIsNone(response.get('topic_summary_dicts'))
+        response = self.get_json(feconf.CREATOR_DASHBOARD_DATA_URL)
+        self.assertEqual(len(response['topic_summary_dicts']), 0)
+        self.save_new_topic(
+            'topic_id', self.owner_id, name='Name',
+            description='Description',
+            canonical_story_ids=['story_id_1', 'story_id_2'],
+            additional_story_ids=['story_id_3'],
+            uncategorized_skill_ids=['skill_id_1', 'skill_id_2'],
+            subtopics=[], next_subtopic_id=1)
+        response = self.get_json(feconf.CREATOR_DASHBOARD_DATA_URL)
+        self.assertEqual(len(response['topic_summary_dicts']), 1)
+        self.assertTrue(isinstance(response['topic_summary_dicts'], list))
+        self.assertEqual(response['topic_summary_dicts'][0]['name'], 'Name')
+        self.assertEqual(
+            response['topic_summary_dicts'][0]['id'], 'topic_id')
         self.logout()
 
     def test_can_update_display_preference(self):
@@ -797,7 +835,7 @@ class CreatorDashboardHandlerTests(test_utils.GenericTestBase):
         self.save_new_default_exploration('exploration_id', self.owner_id)
         suggestion_services.create_suggestion(
             'edit_exploration_state_content', 'exploration',
-            'exploration_id', 1, self.owner_id, change_dict, '', None)
+            'exploration_id', 1, self.owner_id, change_dict, '')
         suggestions = self.get_json(
             feconf.CREATOR_DASHBOARD_DATA_URL)['created_suggestions_list'][0]
         change_dict['old_value'] = {
@@ -825,7 +863,7 @@ class CreatorDashboardHandlerTests(test_utils.GenericTestBase):
         }
         self.save_new_default_exploration('exp1', self.owner_id)
 
-        suggestion_services.create_new_user_contribution_scoring_model(
+        user_models.UserContributionScoringModel.create(
             self.owner_id, 'category1', 15)
         model1 = feedback_models.GeneralFeedbackThreadModel.create(
             'exploration.exp1.thread_1')
@@ -860,7 +898,7 @@ class CreatorDashboardHandlerTests(test_utils.GenericTestBase):
         self.login(self.OWNER_EMAIL)
 
         response = self.get_html_response(feconf.CREATOR_DASHBOARD_URL)
-        self.assertIn('Creator Dashboard - Oppia', response.body)
+        self.assertIn('Creator Dashboard | Oppia', response.body)
 
         self.logout()
 

@@ -17,6 +17,20 @@
  */
 
 import { DateTimeFormatService } from 'services/date-time-format.service';
+import moment from 'moment';
+
+// Needed because MockDateContructor should be of same type as
+// DateConstructor to be used in callFake.
+interface MockDateContructorType {
+  parse: (s: string) => number;
+  UTC: (
+    year: number, month: number, date?: number, hours?: number,
+    minutes?: number, seconds?: number, ms?: number) => number;
+  now: () => number;
+
+  (millisSinceEpoch?: number): string;
+  new(): Date;
+}
 
 describe('datetimeformatter', () => {
   // This corresponds to Fri, 21 Nov 2014 09:45:00 GMT.
@@ -27,15 +41,22 @@ describe('datetimeformatter', () => {
   beforeEach(() => {
     df = new DateTimeFormatService();
 
-    // Mock Date() to give a time of NOW_MILLIS in GMT. (Unfortunately, there
-    // doesn't seem to be a good way to set the timezone locale directly.)
-    spyOn(window, 'Date').and.callFake(function(millisSinceEpoch = 0) {
+    let MockDateContructor = function(millisSinceEpoch = 0) {
       if (millisSinceEpoch === 0) {
         return new OldDate(NOW_MILLIS);
       } else {
         return new OldDate(millisSinceEpoch);
       }
-    });
+    };
+
+    // Mock Date() to give a time of NOW_MILLIS in GMT. (Unfortunately, there
+    // doesn't seem to be a good way to set the timezone locale directly).
+    // This throws "Argument of type '(millisSinceEpoch?: number) => Date' is
+    // not assignable to parameter of type 'DateConstructor'." This is because
+    // the actual 'Date' has more properties than 'MockDateContructor'. We have
+    // only defined the properties we need in 'MockDateContructor'.
+    // @ts-expect-error
+    spyOn(window, 'Date').and.callFake(MockDateContructor);
   });
 
   it('should correctly indicate recency', () => {
@@ -61,6 +82,12 @@ describe('datetimeformatter', () => {
     expect(
       df.getLocaleAbbreviatedDatetimeString(
         NOW_MILLIS - 365 * 24 * 60 * 60 * 1000)).toBe('11/21/13');
+  });
+
+  it('should provide date time hour string', function() {
+    expect(
+      df.getLocaleDateTimeHourString(NOW_MILLIS)).toBe(
+      moment(new Date(NOW_MILLIS)).format('MMM D HH:mm A'));
   });
 
   it('should provide correct date format MM/DD/YYY string', () => {

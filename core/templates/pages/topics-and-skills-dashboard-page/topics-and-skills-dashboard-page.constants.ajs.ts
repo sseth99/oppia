@@ -24,14 +24,18 @@ import { TopicsAndSkillsDashboardPageConstants } from
 /* eslint-enable max-len */
 
 angular.module('oppia').constant(
-  'EVENT_TYPE_TOPIC_CREATION_ENABLED',
-  TopicsAndSkillsDashboardPageConstants.EVENT_TYPE_TOPIC_CREATION_ENABLED);
+  'SKILL_DESCRIPTION_STATUS_VALUES',
+  TopicsAndSkillsDashboardPageConstants.SKILL_DESCRIPTION_STATUS_VALUES);
 
 angular.module('oppia').constant(
-  'EVENT_TYPE_SKILL_CREATION_ENABLED',
-  TopicsAndSkillsDashboardPageConstants.EVENT_TYPE_SKILL_CREATION_ENABLED);
-
+  'TOPIC_SORT_OPTIONS',
+  TopicsAndSkillsDashboardPageConstants.TOPIC_SORT_OPTIONS);
 angular.module('oppia').constant(
-  'EVENT_TOPICS_AND_SKILLS_DASHBOARD_REINITIALIZED',
-  TopicsAndSkillsDashboardPageConstants
-    .EVENT_TOPICS_AND_SKILLS_DASHBOARD_REINITIALIZED);
+  'TOPIC_PUBLISHED_OPTIONS',
+  TopicsAndSkillsDashboardPageConstants.TOPIC_PUBLISHED_OPTIONS);
+angular.module('oppia').constant(
+  'TOPIC_FILTER_CLASSROOM_ALL',
+  TopicsAndSkillsDashboardPageConstants.TOPIC_FILTER_CLASSROOM_ALL);
+angular.module('oppia').constant(
+  'SKILL_STATUS_OPTIONS',
+  TopicsAndSkillsDashboardPageConstants.SKILL_STATUS_OPTIONS);

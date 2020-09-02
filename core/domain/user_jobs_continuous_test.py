@@ -70,6 +70,7 @@ class MockRecentUpdatesAggregator(
     """A modified DashboardRecentUpdatesAggregator that does not start a new
      batch job when the previous one has finished.
     """
+
     @classmethod
     def _kickoff_batch_job_after_previous_one_ends(cls):
         pass
@@ -389,7 +390,6 @@ class RecentUpdatesAggregatorUnitTests(test_utils.GenericTestBase):
             user_b_id = self.get_user_id_from_email(USER_B_EMAIL)
             user_a = user_services.UserActionsInfo(user_a_id)
 
-
             # User A creates an exploration.
             self.save_new_valid_exploration(
                 EXP_ID, user_a_id, title=EXP_TITLE, category='Category')
@@ -595,6 +595,7 @@ class MockUserStatsAggregator(
     """A modified UserStatsAggregator that does not start a new
      batch job when the previous one has finished.
     """
+
     @classmethod
     def _kickoff_batch_job_after_previous_one_ends(cls):
         pass

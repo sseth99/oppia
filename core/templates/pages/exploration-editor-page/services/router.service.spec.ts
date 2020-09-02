@@ -16,31 +16,46 @@
  * @fileoverview Unit tests for RouterService.
  */
 
-import { UpgradedServices } from 'services/UpgradedServices';
+import { fakeAsync, flushMicrotasks } from '@angular/core/testing';
 import $ from 'jquery';
+import { Subscription } from 'rxjs';
 
-describe('Router Service', function() {
+import { UpgradedServices } from 'services/UpgradedServices';
+
+describe('Router Service', () => {
   var RouterService = null;
   var ExplorationStatesService = null;
-  var ExplorationFeaturesService = null;
+  var ExplorationImprovementsService = null;
   var ExplorationInitStateNameService = null;
+  var ExternalSaveService = null;
+  var StateEditorRefreshService = null;
   var $rootScope = null;
   var $location = null;
   var $timeout = null, $interval = null;
+  const centerGraphSpy = jasmine.createSpy('centerGraphSpy');
+  var testSubscriptions = null;
+  var refreshStatisticsTabSpy = null;
+  var refreshSettingsTabSpy = null;
+  var refreshTranslationTabSpy = null;
+  var externalSaveSpy = null;
+  var refreshVersionHistorySpy = null;
+  var refreshStateEditorSpy = null;
 
-  beforeEach(angular.mock.module('oppia'));
-  beforeEach(angular.mock.module('oppia', function($provide) {
+  beforeEach(angular.mock.module('oppia', $provide => {
     var ugs = new UpgradedServices();
     for (let [key, value] of Object.entries(ugs.getUpgradedServices())) {
       $provide.value(key, value);
     }
   }));
-  beforeEach(angular.mock.inject(function($injector) {
+  beforeEach(angular.mock.inject($injector => {
     RouterService = $injector.get('RouterService');
     ExplorationStatesService = $injector.get('ExplorationStatesService');
-    ExplorationFeaturesService = $injector.get('ExplorationFeaturesService');
+    ExplorationImprovementsService = $injector.get(
+      'ExplorationImprovementsService');
     ExplorationInitStateNameService = $injector.get(
       'ExplorationInitStateNameService');
+    ExternalSaveService = $injector.get('ExternalSaveService');
+    StateEditorRefreshService = $injector.get('StateEditorRefreshService');
     $rootScope = $injector.get('$rootScope');
     $location = $injector.get('$location');
     $timeout = $injector.get('$timeout');
@@ -62,7 +77,8 @@ describe('Router Service', function() {
         param_changes: [],
         interaction: {
           answer_groups: [{
-            rule_specs: [],
+            rule_input_translations: {},
+            rule_types_to_inputs: {},
             outcome: {
               dest: 'Me Llamo',
               feedback: {
@@ -71,6 +87,15 @@ describe('Router Service', function() {
               },
             },
           }],
+          customization_args: {
+            placeholder: {
+              value: {
+                content_id: 'ca_placeholder_0',
+                unicode_str: ''
+              }
+            },
+            rows: { value: 1 }
+          },
           default_outcome: {
             dest: 'Hola',
             feedback: {
@@ -104,7 +129,8 @@ describe('Router Service', function() {
         param_changes: [],
         interaction: {
           answer_groups: [{
-            rule_specs: [],
+            rule_input_translations: {},
+            rule_types_to_inputs: {},
             outcome: {
               dest: 'Me Llamo',
               feedback: {
@@ -113,6 +139,15 @@ describe('Router Service', function() {
               },
             },
           }],
+          customization_args: {
+            placeholder: {
+              value: {
+                content_id: 'ca_placeholder_0',
+                unicode_str: ''
+              }
+            },
+            rows: { value: 1 }
+          },
           default_outcome: {
             dest: 'Hola',
             feedback: {
@@ -133,59 +168,42 @@ describe('Router Service', function() {
         }
       }
     });
-    ExplorationFeaturesService.init({
-      param_changes: []
-    }, {
-      is_improvements_tab_enabled: false,
-      is_exploration_whitelisted: false
-    });
   }));
 
-  it('should navigate to main tab when tab is already on main',
-    function(done) {
-      var broadcastSpy = spyOn($rootScope, '$broadcast').and.callThrough();
-      var applyAsyncSpy = spyOn($rootScope, '$applyAsync').and.callThrough();
+  beforeEach(() => {
+    refreshStatisticsTabSpy = jasmine.createSpy('refreshStatisticsTab');
+    refreshSettingsTabSpy = jasmine.createSpy('refreshSettingsTab');
+    refreshTranslationTabSpy = jasmine.createSpy('refreshTranslationTab');
+    refreshStateEditorSpy = jasmine.createSpy('RefreshStateEditor');
+    externalSaveSpy = jasmine.createSpy('externalSpy');
+    refreshVersionHistorySpy = jasmine.createSpy('refreshVersionHistory');
+    testSubscriptions = new Subscription();
+    testSubscriptions.add(RouterService.onCenterGraph.subscribe(
+      centerGraphSpy));
+    testSubscriptions.add(
+      RouterService.onRefreshStatisticsTab.subscribe(refreshStatisticsTabSpy));
+    testSubscriptions.add(
+      RouterService.onRefreshSettingsTab.subscribe(refreshSettingsTabSpy));
+    testSubscriptions.add(
+      RouterService.onRefreshTranslationTab.subscribe(
+        refreshTranslationTabSpy));
+    testSubscriptions.add(
+      ExternalSaveService.onExternalSave.subscribe(externalSaveSpy));
+    testSubscriptions.add(
+      RouterService.onRefreshVersionHistory.subscribe(
+        refreshVersionHistorySpy));
+    testSubscriptions.add(
+      StateEditorRefreshService.onRefreshStateEditor.subscribe(
+        refreshStateEditorSpy));
+  });
 
-      // @ts-ignore
-      var jQuerySpy = spyOn(window, '$');
-      jQuerySpy.withArgs('.oppia-editor-cards-container').and.returnValue(
-        $(document.createElement('div')));
-      jQuerySpy.and.callThrough();
+  afterEach(() => {
+    testSubscriptions.unsubscribe();
+  });
 
-      expect(RouterService.getActiveTabName()).toBe('main');
-      RouterService.navigateToMainTab('newState');
-      // To $watch the first $location.path call.
-      $rootScope.$apply();
-
-      // setTimeout is being used here to not conflict with $timeout.flush
-      // for fadeIn Jquery method. This first setTimeout is to wait the default
-      // time for fadeOut Jquery method to complete, which is 400 miliseconds.
-      // Ref: https://api.jquery.com/fadeout/
-      setTimeout(function() {
-        // Waiting for $applyAsync be called, which can take ~10 miliseconds
-        // according to this ref: https://docs.angularjs.org/api/ng/type/$rootScope.Scope#$applyAsync
-        setTimeout(function() {
-          expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
-          expect(RouterService.getActiveTabName()).toBe('main');
-
-          $interval.flush(300);
-
-          expect(broadcastSpy).toHaveBeenCalled();
-
-          done();
-
-          expect(applyAsyncSpy).toHaveBeenCalled();
-        }, 20);
-        $timeout.flush(150);
-      }, 400);
-    });
-
-  it('should not navigate to main tab when current location is already on' +
-    ' main tab', function(done) {
-    var broadcastSpy = spyOn($rootScope, '$broadcast').and.callThrough();
+  it('should navigate to main tab when tab is already on main', done => {
     var applyAsyncSpy = spyOn($rootScope, '$applyAsync').and.callThrough();
 
-    // @ts-ignore
     var jQuerySpy = spyOn(window, '$');
     jQuerySpy.withArgs('.oppia-editor-cards-container').and.returnValue(
       $(document.createElement('div')));
@@ -196,22 +214,53 @@ describe('Router Service', function() {
     // To $watch the first $location.path call.
     $rootScope.$apply();
 
-    // setTimeout is being used here to not conflict with $timeout.flush
-    // for fadeIn Jquery method. This first setTimeout is to wait the default
-    // time for fadeOut Jquery method to complete, which is 400 miliseconds.
+    // Function setTimeout is being used here to not conflict with
+    // $timeout.flush for fadeIn Jquery method. This first setTimeout is to wait
+    // the default time for fadeOut Jquery method to complete, which is 400
+    // miliseconds.
     // Ref: https://api.jquery.com/fadeout/
-    setTimeout(function() {
+    setTimeout(() => {
       // Waiting for $applyAsync be called, which can take ~10 miliseconds
       // according to this ref: https://docs.angularjs.org/api/ng/type/$rootScope.Scope#$applyAsync
-      setTimeout(function() {
-        expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
+      setTimeout(() => {
+        expect(externalSaveSpy).toHaveBeenCalled();
         expect(RouterService.getActiveTabName()).toBe('main');
 
         $interval.flush(300);
 
-        expect(broadcastSpy).toHaveBeenCalled();
-
+        expect(applyAsyncSpy).toHaveBeenCalled();
         done();
+      }, 20);
+      $timeout.flush(150);
+    }, 400);
+  });
+
+  it('should not navigate to main tab when already there', done => {
+    var applyAsyncSpy = spyOn($rootScope, '$applyAsync').and.callThrough();
+
+    var jQuerySpy = spyOn(window, '$');
+    jQuerySpy.withArgs('.oppia-editor-cards-container').and.returnValue(
+      $(document.createElement('div')));
+    jQuerySpy.and.callThrough();
+
+    expect(RouterService.getActiveTabName()).toBe('main');
+    RouterService.navigateToMainTab('newState');
+    // To $watch the first $location.path call.
+    $rootScope.$apply();
+
+    // Function setTimeout is being used here to not conflict with
+    // $timeout.flush for fadeIn Jquery method. This first setTimeout is to wait
+    // the default time for fadeOut Jquery method to complete, which is 400
+    // miliseconds.
+    // Ref: https://api.jquery.com/fadeout/
+    setTimeout(() => {
+      // Waiting for $applyAsync be called, which can take ~10 miliseconds
+      // according to this ref: https://docs.angularjs.org/api/ng/type/$rootScope.Scope#$applyAsync
+      setTimeout(() => {
+        expect(externalSaveSpy).toHaveBeenCalled();
+        expect(RouterService.getActiveTabName()).toBe('main');
+
+        $interval.flush(300);
 
         expect(applyAsyncSpy).toHaveBeenCalled();
 
@@ -220,74 +269,68 @@ describe('Router Service', function() {
         $rootScope.$apply();
 
         expect(RouterService.getActiveTabName()).toBe('main');
+        done();
       }, 20);
       $timeout.flush(150);
     }, 400);
   });
 
-  it('should navigate to main tab when current location is not main',
-    function() {
-      var broadcastSpy = spyOn($rootScope, '$broadcast').and.callThrough();
+  it('should navigate to main tab when current location is not main', () => {
+    // Go to stats tab.
+    RouterService.navigateToStatsTab();
+    $timeout.flush();
+    $rootScope.$apply();
 
-      // Go to stats tab.
-      RouterService.navigateToStatsTab();
-      $timeout.flush();
-      $rootScope.$apply();
+    expect(externalSaveSpy).toHaveBeenCalled();
+    expect(RouterService.getActiveTabName()).toBe('stats');
+    expect(refreshStatisticsTabSpy).toHaveBeenCalled();
 
-      expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
-      expect(RouterService.getActiveTabName()).toBe('stats');
-      expect(broadcastSpy).toHaveBeenCalledWith('refreshStatisticsTab');
+    expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(true);
+    $rootScope.$apply();
 
-      expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(true);
-      $rootScope.$apply();
+    // Now go to main tab.
+    RouterService.navigateToMainTab('newState');
+    $rootScope.$apply();
+    $rootScope.$apply();
 
-      // Now go to main tab.
-      RouterService.navigateToMainTab('newState');
-      $rootScope.$apply();
-      $rootScope.$apply();
+    expect(externalSaveSpy).toHaveBeenCalled();
+    expect(RouterService.getActiveTabName()).toBe('main');
+    expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(false);
+    $rootScope.$apply();
 
-      expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
-      expect(RouterService.getActiveTabName()).toBe('main');
-      expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(false);
-      $rootScope.$apply();
+    $interval.flush(300);
 
-      $interval.flush(300);
+    expect(refreshStateEditorSpy).toHaveBeenCalled();
+    expect(centerGraphSpy).toHaveBeenCalled();
+  });
 
-      expect(broadcastSpy).toHaveBeenCalledWith('refreshStateEditor');
-      expect(broadcastSpy).toHaveBeenCalledWith('centerGraph');
-    });
-
-  it('should navigate to translation tab', function() {
-    var broadcastSpy = spyOn($rootScope, '$broadcast').and.callThrough();
-
+  it('should navigate to translation tab', () => {
     RouterService.navigateToTranslationTab();
     $rootScope.$apply();
 
-    expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
+    expect(externalSaveSpy).toHaveBeenCalled();
     expect(RouterService.getActiveTabName()).toBe('translation');
     $interval.flush(300);
 
-    expect(broadcastSpy).toHaveBeenCalledWith('refreshTranslationTab');
+    expect(refreshTranslationTabSpy).toHaveBeenCalled();
 
     expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(true);
     $rootScope.$apply();
   });
 
-  it('should navigate to preview tab', function() {
-    var broadcastSpy = spyOn($rootScope, '$broadcast').and.callThrough();
-
+  it('should navigate to preview tab', () => {
     expect(RouterService.getActiveTabName()).toBe('main');
     RouterService.navigateToPreviewTab();
     $timeout.flush(200);
     $rootScope.$apply();
 
-    expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
+    expect(externalSaveSpy).toHaveBeenCalled();
     expect(RouterService.getActiveTabName()).toBe('preview');
 
     $interval.flush(300);
     $rootScope.$apply();
 
-    expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
+    expect(externalSaveSpy).toHaveBeenCalled();
     expect(RouterService.getActiveTabName()).toBe('preview');
 
     $interval.flush(300);
@@ -296,161 +339,193 @@ describe('Router Service', function() {
     $rootScope.$apply();
   });
 
-  it('should navigate to stats tab ', function() {
-    var broadcastSpy = spyOn($rootScope, '$broadcast').and.callThrough();
-
+  it('should navigate to stats tab ', () => {
     RouterService.navigateToStatsTab();
     $rootScope.$apply();
 
-    expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
+    expect(externalSaveSpy).toHaveBeenCalled();
     expect(RouterService.getActiveTabName()).toBe('stats');
-    expect(broadcastSpy).toHaveBeenCalledWith('refreshStatisticsTab');
+    expect(refreshStatisticsTabSpy).toHaveBeenCalled();
 
     expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(true);
     $rootScope.$apply();
   });
 
-  it('should navigate to improvements tab ', function() {
-    spyOn(ExplorationFeaturesService, 'isImprovementsTabEnabled')
-      .and.returnValue(false);
-    var broadcastSpy = spyOn($rootScope, '$broadcast').and.callThrough();
+  it('should navigate to improvements tab ', fakeAsync(() => {
+    spyOn(ExplorationImprovementsService, 'isImprovementsTabEnabledAsync')
+      .and.returnValue(Promise.resolve(true));
 
     RouterService.navigateToImprovementsTab();
-    $rootScope.$apply();
+    $rootScope.$apply(); // Apply the change of active tab.
+    flushMicrotasks(); // Flush pending promise chains.
+    $rootScope.$apply(); // Apply any new changes made to the active tab.
 
-    expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
-    expect(RouterService.getActiveTabName()).toBe('improvements');
-    $interval.flush(300);
-
-    // navigateToMainTab is called
-    $rootScope.$apply();
-    expect(RouterService.getCurrentStateFromLocationPath()).toBe(null);
-    $rootScope.$apply();
+    expect(externalSaveSpy).toHaveBeenCalled();
+    expect(RouterService.getActiveTabName()).toEqual('improvements');
 
     expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(true);
     $rootScope.$apply();
-  });
+  }));
 
-  it('should navigate to settings tab ', function() {
-    var broadcastSpy = spyOn($rootScope, '$broadcast').and.callThrough();
+  it(
+    'should reroute to main tab after confirming improvements tab is disabled',
+    fakeAsync(() => {
+      let resolveIsImprovementsTabEnabledPromise: (_: boolean) => void;
+      let isImprovementsTabEnabledPromise = new Promise(resolve => {
+        resolveIsImprovementsTabEnabledPromise = resolve;
+      });
+      spyOn(ExplorationImprovementsService, 'isImprovementsTabEnabledAsync')
+        .and.returnValue(isImprovementsTabEnabledPromise);
 
+      RouterService.navigateToImprovementsTab();
+      $rootScope.$apply(); // Apply the change of active tab.
+
+      // Promise hasn't been fulfilled yet, should still be on improvements tab.
+      expect(RouterService.getActiveTabName()).toEqual('improvements');
+      expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(true);
+
+      resolveIsImprovementsTabEnabledPromise(false);
+      flushMicrotasks(); // Flush pending promise chains.
+      $rootScope.$apply(); // Apply any new changes made to the active tab.
+
+      // Promise has been fulfilled, should be redirected to main tab since
+      // we've confirmed the improvements tab is not enabled.
+      expect(RouterService.getActiveTabName()).toEqual('main');
+      expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(false);
+    }));
+
+  it('should reroute to the main tab immediately when improvements tab is ' +
+    'disabled', fakeAsync(() => {
+    spyOn(ExplorationImprovementsService, 'isImprovementsTabEnabledAsync')
+      .and.returnValue(Promise.resolve(false));
+
+    RouterService.navigateToImprovementsTab();
+    $rootScope.$apply(); // Apply the change of active tab.
+    flushMicrotasks(); // Flush pending promise chains.
+    $rootScope.$apply(); // Apply any new changes made to the active tab.
+
+    expect(RouterService.getActiveTabName()).toEqual('main');
+    expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(false);
+  }));
+
+  it(
+    'should remain on the improvements tab after confirming it is enabled',
+    fakeAsync(() => {
+      let resolveIsImprovementsTabEnabledPromise: (_: boolean) => void;
+      let isImprovementsTabEnabledPromise = new Promise(resolve => {
+        resolveIsImprovementsTabEnabledPromise = resolve;
+      });
+      spyOn(ExplorationImprovementsService, 'isImprovementsTabEnabledAsync')
+        .and.returnValue(isImprovementsTabEnabledPromise);
+
+      RouterService.navigateToImprovementsTab();
+      $rootScope.$apply(); // Apply the change of active tab.
+      flushMicrotasks(); // Flush pending promise chains.
+      $rootScope.$apply(); // Apply any new changes made to the active tab.
+
+      expect(RouterService.getActiveTabName()).toEqual('improvements');
+      expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(true);
+
+      resolveIsImprovementsTabEnabledPromise(true);
+      flushMicrotasks(); // Flush pending promise chains.
+      $rootScope.$apply(); // Apply any new changes made to the active tab.
+
+      expect(RouterService.getActiveTabName()).toEqual('improvements');
+      expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(true);
+    }));
+
+  it(
+    'should not reroute to the main tab after leaving improvements tab',
+    fakeAsync(() => {
+      let resolveIsImprovementsTabEnabledPromise: (_: boolean) => void;
+      let isImprovementsTabEnabledPromise = new Promise(resolve => {
+        resolveIsImprovementsTabEnabledPromise = resolve;
+      });
+      spyOn(ExplorationImprovementsService, 'isImprovementsTabEnabledAsync')
+        .and.returnValue(isImprovementsTabEnabledPromise);
+
+      RouterService.navigateToImprovementsTab();
+      $rootScope.$apply(); // Apply the change of active tab.
+
+      // Promise hasn't been fulfilled yet, should still be on improvements tab.
+      expect(RouterService.getActiveTabName()).toEqual('improvements');
+
+      RouterService.navigateToStatsTab();
+      $rootScope.$apply(); // Apply the change of active tab.
+
+      // Have navigated to stats tab before promise was fulfilled.
+      expect(RouterService.getActiveTabName()).toEqual('stats');
+
+      resolveIsImprovementsTabEnabledPromise(false);
+      flushMicrotasks(); // Flush pending promise chains.
+      $rootScope.$apply(); // Apply any new changes made to the active tab.
+
+      // Promise has been fulfilled, but user has navigated away from the
+      // improvements tab. They should *not* have been redirected to main tab.
+      expect(RouterService.getActiveTabName()).toEqual('stats');
+    }));
+
+  it('should navigate to settings tab ', () => {
     RouterService.navigateToSettingsTab();
     $rootScope.$apply();
 
-    expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
+    expect(externalSaveSpy).toHaveBeenCalled();
     expect(RouterService.getActiveTabName()).toBe('settings');
-    expect(broadcastSpy).toHaveBeenCalledWith('refreshSettingsTab');
+    expect(refreshSettingsTabSpy).toHaveBeenCalled();
 
     expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(true);
     $rootScope.$apply();
   });
 
-  it('should navigate to history tab ', function() {
-    var broadcastSpy = spyOn($rootScope, '$broadcast').and.callThrough();
-
+  it('should navigate to history tab ', () => {
     RouterService.navigateToHistoryTab();
     $rootScope.$apply();
 
-    expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
-    expect(broadcastSpy).toHaveBeenCalledWith('refreshVersionHistory', {
-      forceRefresh: false
-    });
+    expect(externalSaveSpy).toHaveBeenCalled();
+    expect(refreshVersionHistorySpy).toHaveBeenCalled();
     expect(RouterService.getActiveTabName()).toBe('history');
 
     expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(true);
     $rootScope.$apply();
   });
 
-  it('should navigate to feedback tab ', function() {
-    spyOn(ExplorationFeaturesService, 'isImprovementsTabEnabled')
-      .and.returnValue(true);
-    var broadcastSpy = spyOn($rootScope, '$broadcast').and.callThrough();
-
+  it('should navigate to feedback tab ', () => {
     RouterService.navigateToFeedbackTab();
     $rootScope.$apply();
 
-    // $watch is called
-    expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
+    // $watch is called.
+    expect(externalSaveSpy).toHaveBeenCalled();
     expect(RouterService.getActiveTabName()).toBe('feedback');
-    $interval.flush(300);
 
-    // navigateToMainTab is called
-    $rootScope.$apply();
-    expect(RouterService.getCurrentStateFromLocationPath()).toBe(null);
-    $rootScope.$apply();
-
-    expect(RouterService.getActiveTabName()).toBe('feedback');
     expect(RouterService.isLocationSetToNonStateEditorTab()).toBe(true);
     $rootScope.$apply();
   });
 
-  it('should handle when location redirects to an invalid path', function() {
-    var broadcastSpy = spyOn($rootScope, '$broadcast').and.callThrough();
+  it('should handle when location redirects to an invalid path', () => {
     var locationPathSpy = spyOn($location, 'path');
     locationPathSpy.and.returnValue('/invalid');
 
     RouterService.navigateToMainTab(null);
     $rootScope.$apply();
-    expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
+    expect(externalSaveSpy).toHaveBeenCalled();
 
     // Change to a valid path during the call.
     locationPathSpy.and.returnValue('/gui/initState');
 
     $rootScope.$apply();
-    expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
+    expect(externalSaveSpy).toHaveBeenCalled();
     expect(RouterService.getActiveTabName()).toBe('main');
+    expect(RouterService.getCurrentStateFromLocationPath())
+      .toEqual('initState');
 
     $interval.flush(300);
 
-    expect(broadcastSpy).toHaveBeenCalledWith('refreshStateEditor');
-    expect(broadcastSpy).toHaveBeenCalledWith('centerGraph');
+    expect(refreshStateEditorSpy).toHaveBeenCalled();
+    expect(centerGraphSpy).toHaveBeenCalled();
   });
 
-  it('should save pending changes', function() {
-    var broadcastSpy = spyOn($rootScope, '$broadcast').and.callThrough();
+  it('should save pending changes', () => {
     RouterService.savePendingChanges();
-    expect(broadcastSpy).toHaveBeenCalledWith('externalSave');
+    expect(externalSaveSpy).toHaveBeenCalled();
   });
-
-  it('should save pending changes even when AngularJS throws an error',
-    function() {
-      // In savePendingChanges, the $broadcast is called twice. However,
-      // sometimes AngularJS throws an error in the first call of $broadcast.
-      // That's why there is a try/catch block in the method.
-      // In order to reproduce this behavior, a counter was created to
-      // handle it.
-      var broadcastCallsCounter = 0;
-      var EXPECTED_BROADCAST_EXTERNAL_SAVE_CALLS = 2;
-      spyOn($rootScope, '$broadcast').and.callFake(function(message) {
-        // AngularJS calls $broadcast with other parameters in its flow,
-        // but only with externalSave params is called in the method.
-        if (message === 'externalSave') {
-          broadcastCallsCounter++;
-          if (broadcastCallsCounter === 1) {
-            // First call throws an error so the catch block will be executed.
-            throw new Error('Cannot read property $$nextSibling of null');
-          }
-        }
-      });
-      // Apply is called inside catch block.
-      var applySpy = spyOn($rootScope, '$apply').and.callThrough();
-
-      // Checking if the $broadcast is being called as expected before calling
-      // savePendingChanges.
-      // Check if the first call is really throwing an error.
-      expect(function() {
-        $rootScope.$broadcast('externalSave');
-      }).toThrowError('Cannot read property $$nextSibling of null');
-      // Check if the second call will not throw an error.
-      expect(function() {
-        $rootScope.$broadcast('externalSave');
-      }).not.toThrowError('Cannot read property $$nextSibling of null');
-      // Reset the counter before calling the method to be tested.
-      broadcastCallsCounter = 0;
-
-      RouterService.savePendingChanges();
-      expect(applySpy).toHaveBeenCalled();
-      expect(broadcastCallsCounter).toBe(
-        EXPECTED_BROADCAST_EXTERNAL_SAVE_CALLS);
-    });
 });

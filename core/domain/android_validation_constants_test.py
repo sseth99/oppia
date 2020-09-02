@@ -29,6 +29,9 @@ class AndroidValidationConstantsTest(test_utils.GenericTestBase):
 
     def test_that_character_limits_in_both_files_are_equal(self):
         self.assertEqual(
+            android_validation_constants.MAX_CHARS_IN_ABBREV_TOPIC_NAME,
+            constants.MAX_CHARS_IN_ABBREV_TOPIC_NAME)
+        self.assertEqual(
             android_validation_constants.MAX_CHARS_IN_TOPIC_NAME,
             constants.MAX_CHARS_IN_TOPIC_NAME)
         self.assertEqual(
@@ -46,3 +49,9 @@ class AndroidValidationConstantsTest(test_utils.GenericTestBase):
         self.assertEqual(
             android_validation_constants.MAX_CHARS_IN_CHAPTER_TITLE,
             constants.MAX_CHARS_IN_CHAPTER_TITLE)
+        self.assertEqual(
+            android_validation_constants.MAX_CHARS_IN_CHAPTER_DESCRIPTION,
+            constants.MAX_CHARS_IN_CHAPTER_DESCRIPTION)
+        self.assertEqual(
+            android_validation_constants.MAX_CHARS_IN_MISCONCEPTION_NAME,
+            constants.MAX_CHARS_IN_MISCONCEPTION_NAME)

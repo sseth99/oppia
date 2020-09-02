@@ -53,7 +53,7 @@ angular.module('oppia').controller('SuggestionModalForCreatorViewController', [
     $scope.reviewMessage = null;
     $scope.summaryMessage = null;
     $scope.canReviewActiveThread = canReviewActiveThread;
-    // ng-model needs to bind to a property of an object on
+    // The ng-model needs to bind to a property of an object on
     // the scope (the property cannot sit directly on the scope)
     // Reference https://stackoverflow.com/q/12618342
     $scope.suggestionData = {newSuggestionHtml: newContent.html};
@@ -102,7 +102,8 @@ angular.module('oppia').controller('SuggestionModalForCreatorViewController', [
     $scope.isResubmitButtonDisabled = function() {
       return !(
         $scope.summaryMessage &&
-        ($scope.suggestionData.newSuggestionHtml.trim() !==
+        (
+          $scope.suggestionData.newSuggestionHtml.trim() !==
           newContent.html.trim()));
     };
 

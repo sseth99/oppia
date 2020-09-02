@@ -20,21 +20,18 @@
 import { downgradeInjectable } from '@angular/upgrade/static';
 import { Injectable } from '@angular/core';
 
+import { Outcome } from 'domain/exploration/OutcomeObjectFactory';
+
 export class AnswerClassificationResult {
-  // TODO(#7165): Replace 'any' with the exact type. This has been kept as
-  // 'any' because 'outcome' is an outcome domain object and this can be
-  // directly typed to 'Outcome' type once 'OutcomeObjectFactory' is upgraded.
-  outcome: any;
+  outcome: Outcome;
   answerGroupIndex: number;
-  ruleIndex: number;
   classificationCategorization: string;
 
   constructor(
-      outcome: any, answerGroupIndex: number, ruleIndex: number,
+      outcome: Outcome, answerGroupIndex: number,
       classificationCategorization: string) {
     this.outcome = outcome;
     this.answerGroupIndex = answerGroupIndex;
-    this.ruleIndex = ruleIndex;
     this.classificationCategorization = classificationCategorization;
   }
 }
@@ -43,14 +40,11 @@ export class AnswerClassificationResult {
   providedIn: 'root'
 })
 export class AnswerClassificationResultObjectFactory {
-  // TODO(#7165): Replace 'any' with the exact type. This has been kept as
-  // 'any' because 'outcome' is an outcome domain object and this can be
-  // directly typed to 'Outcome' type once 'OutcomeObjectFactory' is upgraded.
   createNew(
-      outcome: any, answerGroupIndex: number, ruleIndex: number,
+      outcome: Outcome, answerGroupIndex: number,
       classificationCategorization: string): AnswerClassificationResult {
     return new AnswerClassificationResult(
-      outcome, answerGroupIndex, ruleIndex, classificationCategorization);
+      outcome, answerGroupIndex, classificationCategorization);
   }
 }
 

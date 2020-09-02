@@ -13,7 +13,8 @@
 # limitations under the License.
 
 """Constants that are relevant to the validation of new structures for Android
-app.
+app. This file should only contain validations which affect UI display and
+general functionality on Android.
 """
 
 from __future__ import unicode_literals  # pylint: disable=import-only-modules
@@ -23,14 +24,14 @@ from __future__ import unicode_literals  # pylint: disable=import-only-modules
 # changed, just this array has to be modified to include the new
 # interactions or remove existing ones.
 VALID_INTERACTION_IDS = [
-    'Continue', 'EndExploration', 'NumericInput', 'TextInput',
-    'FractionInput', 'NumberWithUnits', 'MultipleChoiceInput',
-    'ItemSelectionInput']
+    'Continue', 'DragAndDropSortInput', 'EndExploration', 'FractionInput',
+    'ImageClickInput', 'ItemSelectionInput', 'MultipleChoiceInput',
+    'NumericInput', 'NumberWithUnits', 'TextInput'
+]
 
 SUPPORTED_LANGUAGES = ['en']
 
-INVALID_RTE_COMPONENTS = [
-    'collapsible', 'math', 'skillreview', 'tabs', 'video']
+VALID_RTE_COMPONENTS = ['image', 'link', 'math', 'skillreview']
 
 # If any of the following values are changed, edit the corresponding value in
 # app.constants.ts as well.
@@ -38,6 +39,8 @@ MAX_CHARS_IN_TOPIC_NAME = 39
 MAX_CHARS_IN_ABBREV_TOPIC_NAME = 12
 MAX_CHARS_IN_TOPIC_DESCRIPTION = 240
 MAX_CHARS_IN_SUBTOPIC_TITLE = 64
-MAX_CHARS_IN_SKILL_DESCRIPTION = 64
+MAX_CHARS_IN_SKILL_DESCRIPTION = 100
 MAX_CHARS_IN_STORY_TITLE = 39
 MAX_CHARS_IN_CHAPTER_TITLE = 36
+MAX_CHARS_IN_CHAPTER_DESCRIPTION = 152
+MAX_CHARS_IN_MISCONCEPTION_NAME = 100

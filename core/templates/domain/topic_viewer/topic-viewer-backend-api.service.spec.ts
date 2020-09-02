@@ -22,8 +22,8 @@ import { TestBed, fakeAsync, flushMicrotasks } from '@angular/core/testing';
 
 import { ReadOnlyTopicObjectFactory } from
   'domain/topic_viewer/read-only-topic-object.factory';
-import { SkillSummaryObjectFactory } from
-  'domain/skill/SkillSummaryObjectFactory';
+import { ShortSkillSummaryObjectFactory } from
+  'domain/skill/ShortSkillSummaryObjectFactory';
 import { SubtopicObjectFactory } from 'domain/topic/SubtopicObjectFactory';
 import { TopicViewerBackendApiService } from
   'domain/topic_viewer/topic-viewer-backend-api.service';
@@ -41,11 +41,11 @@ describe('Topic viewer backend API service', () => {
 
   beforeEach(angular.mock.module('oppia', function($provide) {
     $provide.value(
-      'SkillSummaryObjectFactory', new SkillSummaryObjectFactory());
+      'ShortSkillSummaryObjectFactory', new ShortSkillSummaryObjectFactory());
     $provide.value(
       'ReadOnlyObjectFactory', new ReadOnlyTopicObjectFactory(
-        new SubtopicObjectFactory(new SkillSummaryObjectFactory()),
-        new SkillSummaryObjectFactory()));
+        new SubtopicObjectFactory(new ShortSkillSummaryObjectFactory()),
+        new ShortSkillSummaryObjectFactory()));
   }));
 
   beforeEach(angular.mock.module('oppia', function($provide) {
@@ -63,23 +63,30 @@ describe('Topic viewer backend API service', () => {
     topicViewerBackendApiService = TestBed.get(TopicViewerBackendApiService);
     readOnlyTopicObjectFactory = TestBed.get(ReadOnlyTopicObjectFactory);
 
-    // Sample topic object returnable from the backend
+    // Sample topic object returnable from the backend.
     sampleDataResults = {
       topic_name: 'topic_name',
       topic_id: 'topic_id',
+      topic_description: 'Topic description',
       canonical_story_dicts: [{
         id: '0',
         title: 'Story Title',
         description: 'Story Description',
-        node_count: 1,
-        published: true
+        node_titles: ['Chapter 1'],
+        thumbnail_filename: 'image.svg',
+        thumbnail_bg_color: '#F8BF74',
+        published: true,
+        completed_node_titles: ['Chapter 1']
       }],
       additional_story_dicts: [{
         id: '1',
         title: 'Story Title',
         description: 'Story Description',
-        node_count: 1,
-        published: true
+        node_count: ['Chapter 1'],
+        thumbnail_filename: 'image.svg',
+        thumbnail_bg_color: '#F8BF74',
+        published: true,
+        completed_node_titles: ['Chapter 1']
       }],
       uncategorized_skill_ids: ['skill_id_1'],
       subtopics: [{
@@ -94,7 +101,7 @@ describe('Topic viewer backend API service', () => {
         skill_id_1: 'Skill Description 1',
         skill_id_2: 'Skill Description 2'
       },
-      train_tab_should_be_displayed: false
+      practice_tab_is_displayed: false
     };
 
     sampleDataResultsObjects = readOnlyTopicObjectFactory.createFromBackendDict(
@@ -109,10 +116,10 @@ describe('Topic viewer backend API service', () => {
     fakeAsync(() => {
       const successHandler = jasmine.createSpy('success');
       const failHandler = jasmine.createSpy('fail');
-      topicViewerBackendApiService.fetchTopicData('0').then(
+      topicViewerBackendApiService.fetchTopicData('0', 'staging').then(
         successHandler, failHandler);
       const req = httpTestingController.expectOne(
-        '/topic_data_handler/0');
+        '/topic_data_handler/staging/0');
       expect(req.request.method).toEqual('GET');
       req.flush(sampleDataResults);
 
@@ -127,12 +134,14 @@ describe('Topic viewer backend API service', () => {
     fakeAsync(() => {
       const successHandler = jasmine.createSpy('success');
       const failHandler = jasmine.createSpy('fail');
-      topicViewerBackendApiService.fetchTopicData('0').then(
+      topicViewerBackendApiService.fetchTopicData('0', 'staging').then(
         successHandler, failHandler);
       const req = httpTestingController.expectOne(
-        '/topic_data_handler/0');
+        '/topic_data_handler/staging/0');
       expect(req.request.method).toEqual('GET');
-      req.flush('Error fetching topic 0.', {
+      req.flush({
+        error: 'Error fetching topic 0.'
+      }, {
         status: 500,
         statusText: 'Error fetching topic 0.'
       });

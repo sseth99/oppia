@@ -38,7 +38,8 @@ describe('Written Translations Object Factory', () => {
         translations_mapping: {
           content_1: {
             'hi-en': {
-              html: '',
+              data_format: 'html',
+              translation: '',
               needs_update: false
             }
           }
@@ -52,7 +53,8 @@ describe('Written Translations Object Factory', () => {
         translations_mapping: {
           content_1: {
             'hi-en': {
-              html: '',
+              data_format: 'html',
+              translation: '',
               needs_update: false
             }
           }
@@ -92,13 +94,14 @@ describe('Written Translations Object Factory', () => {
   it('should add translation in a written translations object', () => {
     expect(() => {
       writtenTranslationsBackendDict.addWrittenTranslation(
-        'content_1', 'hi-en', 'This is a HTML text');
+        'content_1', 'hi-en', 'html', 'This is a HTML text');
     }).toThrowError('Trying to add duplicate language code.');
 
     writtenTranslationsBackendDict.addWrittenTranslation(
-      'content_1', 'en', 'English HTML');
-    expect(writtenTranslationsBackendDict
-      .getTranslationsLanguageCodes('content_1')).toEqual(['hi-en', 'en']);
+      'content_1', 'en', 'html', 'English HTML');
+    expect(
+      writtenTranslationsBackendDict
+        .getTranslationsLanguageCodes('content_1')).toEqual(['hi-en', 'en']);
   });
 
   it('should update the html language code of a written translations object',
@@ -108,7 +111,8 @@ describe('Written Translations Object Factory', () => {
           translations_mapping: {
             content_1: {
               'hi-en': {
-                html: '<p>This is the old HTML</p>',
+                data_format: 'html',
+                translation: '<p>This is the old HTML</p>',
                 needs_update: false
               }
             }
@@ -117,17 +121,18 @@ describe('Written Translations Object Factory', () => {
 
       expect(writtenTranslationsBackendDict.hasWrittenTranslation(
         'content_1', 'hi-en')).toBe(true);
-      writtenTranslationsBackendDict.updateWrittenTranslationHtml(
+      writtenTranslationsBackendDict.updateWrittenTranslation(
         'content_1', 'hi-en', '<p>This is the new HTML</p>');
       expect(writtenTranslationsBackendDict.getWrittenTranslation(
         'content_1', 'hi-en')).toEqual(
         writtenTranslationObjectFactory.createFromBackendDict({
-          html: '<p>This is the new HTML</p>',
+          data_format: 'html',
+          translation: '<p>This is the new HTML</p>',
           needs_update: false
         }));
 
       expect(() => {
-        writtenTranslationsBackendDict.updateWrittenTranslationHtml(
+        writtenTranslationsBackendDict.updateWrittenTranslation(
           'content_1', 'en', 'This is the new HTML');
       }).toThrowError('Unable to find the given language code.');
       expect(writtenTranslationsBackendDict.hasWrittenTranslation('en'))
@@ -140,7 +145,8 @@ describe('Written Translations Object Factory', () => {
     expect(writtenTranslationsBackendDict.getWrittenTranslation(
       'content_1', 'hi-en')).toEqual(
       writtenTranslationObjectFactory.createFromBackendDict({
-        html: '',
+        data_format: 'html',
+        translation: '',
         needs_update: true
       }));
     expect(writtenTranslationsBackendDict.hasUnflaggedWrittenTranslations(
@@ -151,7 +157,8 @@ describe('Written Translations Object Factory', () => {
     expect(writtenTranslationsBackendDict.getWrittenTranslation(
       'content_1', 'hi-en')).toEqual(
       writtenTranslationObjectFactory.createFromBackendDict({
-        html: '',
+        data_format: 'html',
+        translation: '',
         needs_update: false
       }));
     expect(writtenTranslationsBackendDict.hasUnflaggedWrittenTranslations(
@@ -165,11 +172,13 @@ describe('Written Translations Object Factory', () => {
           translations_mapping: {
             content_1: {
               'hi-en': {
-                html: 'This is the old HTML',
+                data_format: 'html',
+                translation: 'This is the old HTML',
                 needs_update: false
               },
               en: {
-                html: '',
+                data_format: 'html',
+                translation: '',
                 needs_update: false
               }
             }
@@ -181,13 +190,15 @@ describe('Written Translations Object Factory', () => {
       expect(writtenTranslationsBackendDict.getWrittenTranslation(
         'content_1', 'hi-en')).toEqual(
         writtenTranslationObjectFactory.createFromBackendDict({
-          html: 'This is the old HTML',
+          data_format: 'html',
+          translation: 'This is the old HTML',
           needs_update: true
         }));
       expect(writtenTranslationsBackendDict.getWrittenTranslation(
         'content_1', 'en')).toEqual(
         writtenTranslationObjectFactory.createFromBackendDict({
-          html: '',
+          data_format: 'html',
+          translation: '',
           needs_update: true
         }));
       expect(writtenTranslationsBackendDict.hasUnflaggedWrittenTranslations(

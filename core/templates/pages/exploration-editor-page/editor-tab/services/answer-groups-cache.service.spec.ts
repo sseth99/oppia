@@ -24,7 +24,8 @@ import { AnswerGroupsCacheService } from
 describe('Answer Groups Cache Service', () => {
   describe('AnswerGroupsCache', () => {
     var answerGroup = {
-      rule_specs: [],
+      rule_input_translations: {},
+      rule_types_to_inputs: {},
       outcome: {
         dest: 'default',
         feedback: {
@@ -33,8 +34,11 @@ describe('Answer Groups Cache Service', () => {
         },
         labelled_as_correct: false,
         param_changes: [],
-        refresher_exploration_id: null
-      }
+        refresher_exploration_id: null,
+        missing_prerequisite_skill_id: null
+      },
+      training_data: null,
+      tagged_skill_misconception_id: null
     };
 
     var agcs: AnswerGroupsCacheService = null;

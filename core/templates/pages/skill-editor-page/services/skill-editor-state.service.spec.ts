@@ -120,6 +120,12 @@ describe('Skill editor state service', function() {
 
   beforeEach(angular.mock.module('oppia'));
   beforeEach(angular.mock.module('oppia', function($provide) {
+    var ugs = new UpgradedServices();
+    for (let [key, value] of Object.entries(ugs.getUpgradedServices())) {
+      $provide.value(key, value);
+    }
+  }));
+  beforeEach(angular.mock.module('oppia', function($provide) {
     fakeSkillBackendApiService = (
       FakeSkillBackendApiService());
     $provide.value(
@@ -146,12 +152,6 @@ describe('Skill editor state service', function() {
     $provide.value(
       'SkillRightsBackendApiService',
       [fakeSkillRightsBackendApiService][0]);
-  }));
-  beforeEach(angular.mock.module('oppia', function($provide) {
-    var ugs = new UpgradedServices();
-    for (let [key, value] of Object.entries(ugs.getUpgradedServices())) {
-      $provide.value(key, value);
-    }
   }));
 
   beforeEach(angular.mock.inject(function($injector) {
@@ -189,7 +189,7 @@ describe('Skill editor state service', function() {
 
     var rubricDict = {
       difficulty: skillDifficulties[0],
-      explanation: 'explanation'
+      explanation: ['explanation']
     };
 
     var example1 = {
@@ -320,8 +320,8 @@ describe('Skill editor state service', function() {
 
   it('should be able to save the collection and pending changes',
     function() {
-      spyOn(fakeSkillBackendApiService,
-        'updateSkill').and.callThrough();
+      spyOn(
+        fakeSkillBackendApiService, 'updateSkill').and.callThrough();
 
       SkillEditorStateService.loadSkill('skill_id_1');
       SkillUpdateService.setSkillDescription(

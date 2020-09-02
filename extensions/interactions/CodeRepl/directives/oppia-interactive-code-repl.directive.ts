@@ -20,20 +20,24 @@
  * followed by the name of the arg.
  */
 
-require('interactions/codemirrorRequires.ts');
+require('third-party-imports/ui-codemirror.import.ts');
 
 require('interactions/CodeRepl/directives/code-repl-rules.service.ts');
 require(
   'pages/exploration-player-page/services/current-interaction.service.ts');
-require('services/html-escaper.service.ts');
+require(
+  'interactions/interaction-attributes-extractor.service.ts');
 require('services/contextual/window-dimensions.service.ts');
+require('pages/exploration-player-page/services/player-position.service.ts');
+
+import { Subscription } from 'rxjs';
 
 angular.module('oppia').directive('oppiaInteractiveCodeRepl', [
-  '$timeout', 'CodeReplRulesService', 'HtmlEscaperService',
-  'EVENT_NEW_CARD_AVAILABLE',
+  '$timeout', 'CodeReplRulesService', 'InteractionAttributesExtractorService',
+  'PlayerPositionService',
   function(
-      $timeout, CodeReplRulesService, HtmlEscaperService,
-      EVENT_NEW_CARD_AVAILABLE) {
+      $timeout, CodeReplRulesService, InteractionAttributesExtractorService,
+      PlayerPositionService) {
     return {
       restrict: 'E',
       scope: {},
@@ -49,6 +53,7 @@ angular.module('oppia').directive('oppiaInteractiveCodeRepl', [
             $scope, $attrs, WindowDimensionsService,
             CurrentInteractionService) {
           var ctrl = this;
+          ctrl.directiveSubscriptions = new Subscription();
           ctrl.initCodeEditor = function(editor) {
             editor.setValue(ctrl.code);
             // Options for the ui-codemirror display.
@@ -75,15 +80,6 @@ angular.module('oppia').directive('oppiaInteractiveCodeRepl', [
 
             editor.on('change', function() {
               ctrl.code = editor.getValue();
-            });
-
-            // Without this, the editor does not show up correctly on small
-            // screens when the user switches to the supplemental interaction.
-            $scope.$on('showInteraction', function() {
-              $timeout(function() {
-                editor.refresh();
-                initMarkers(editor);
-              }, 200);
             });
 
             ctrl.hasLoaded = true;
@@ -175,7 +171,8 @@ angular.module('oppia').directive('oppiaInteractiveCodeRepl', [
                 markOptions);
 
               for (var i = 0; i < postCodeNumLines; i++) {
-                editor.addLineClass(preCodeNumLines + userCodeNumLines + i,
+                editor.addLineClass(
+                  preCodeNumLines + userCodeNumLines + i,
                   'text', 'code-repl-noneditable-line');
               }
             }
@@ -196,20 +193,27 @@ angular.module('oppia').directive('oppiaInteractiveCodeRepl', [
             $scope.$apply();
           };
           ctrl.$onInit = function() {
-            $scope.$on(EVENT_NEW_CARD_AVAILABLE, function() {
-              ctrl.interactionIsActive = false;
-            });
+            ctrl.directiveSubscriptions.add(
+              PlayerPositionService.onNewCardAvailable.subscribe(
+                () => ctrl.interactionIsActive = false
+              )
+            );
+            const {
+              language,
+              placeholder,
+              preCode,
+              postCode
+            } = InteractionAttributesExtractorService.getValuesFromAttributes(
+              'CodeRepl',
+              $attrs
+            );
             ctrl.interactionIsActive = (ctrl.getLastAnswer() === null);
-            ctrl.language = HtmlEscaperService.escapedJsonToObj(
-              $attrs.languageWithValue);
-            ctrl.placeholder = HtmlEscaperService.escapedJsonToObj(
-              $attrs.placeholderWithValue);
-            ctrl.preCode = HtmlEscaperService.escapedJsonToObj(
-              $attrs.preCodeWithValue);
-            ctrl.postCode = HtmlEscaperService.escapedJsonToObj(
-              $attrs.postCodeWithValue);
+            ctrl.language = language;
+            ctrl.placeholder = placeholder;
+            ctrl.preCode = preCode;
+            ctrl.postCode = postCode;
 
-            // Make sure ctrl.preCode ends with a newline:
+            // Make sure ctrl.preCode ends with a newline.
             if (ctrl.preCode.trim().length === 0) {
               ctrl.preCode = '';
             } else if (ctrl.preCode.slice(-1) !== '\n') {
@@ -242,7 +246,7 @@ angular.module('oppia').directive('oppiaInteractiveCodeRepl', [
                 ctrl.output += out;
               },
               read: function(name) {
-                // This function is called when a builtin module is imported
+                // This function is called when a builtin module is imported.
                 if (Sk.builtinFiles.files[name] === undefined) {
                   // If corresponding module is not present then,
                   // removal of this block also results in failure of import.
@@ -258,6 +262,9 @@ angular.module('oppia').directive('oppiaInteractiveCodeRepl', [
 
             CurrentInteractionService.registerCurrentInteraction(
               submitAnswer, null);
+          };
+          ctrl.$onDestroy = function() {
+            ctrl.directiveSubscriptions.unsubscribe();
           };
         }
       ]

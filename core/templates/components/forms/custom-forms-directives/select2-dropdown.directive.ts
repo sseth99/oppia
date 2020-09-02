@@ -17,6 +17,7 @@
  */
 
 require('domain/utilities/url-interpolation.service.ts');
+require('third-party-imports/select2.import.ts');
 
 angular.module('oppia').directive('select2Dropdown', [
   'UrlInterpolationService', function(UrlInterpolationService) {
@@ -109,7 +110,7 @@ angular.module('oppia').directive('select2Dropdown', [
             $scope.onSelectionChange();
           });
 
-          // Respond to external changes in $scope.item
+          // Respond to external changes in $scope.item.
           $scope.$watch('item', function(newValue) {
             $(select2Node).val(newValue);
           });

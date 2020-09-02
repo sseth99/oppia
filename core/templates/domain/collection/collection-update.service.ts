@@ -19,7 +19,7 @@
  * undo/redo service.
  */
 
-require('domain/collection/CollectionNodeObjectFactory.ts');
+require('domain/collection/collection-node-object.factory.ts');
 require('domain/editor/undo_redo/ChangeObjectFactory.ts');
 require('domain/editor/undo_redo/undo-redo.service.ts');
 
@@ -105,8 +105,8 @@ angular.module('oppia').factory('CollectionUpdateService', [
        * Adds a new exploration to a collection and records the change in the
        * undo/redo service.
        */
-      addCollectionNode: function(collection, explorationId,
-          explorationSummaryBackendObject) {
+      addCollectionNode: function(
+          collection, explorationId, explorationSummaryBackendObject) {
         var oldSummaryBackendObject = angular.copy(
           explorationSummaryBackendObject);
         _applyChange(collection, CMD_ADD_COLLECTION_NODE, {
@@ -173,11 +173,11 @@ angular.module('oppia').factory('CollectionUpdateService', [
         _applyPropertyChange(
           collection, COLLECTION_PROPERTY_TITLE, title, oldTitle,
           function(changeDict, collection) {
-            // Apply
+            // ---- Apply ----
             var title = _getNewPropertyValueFromChangeDict(changeDict);
             collection.setTitle(title);
           }, function(changeDict, collection) {
-            // Undo.
+            // ---- Undo ----
             collection.setTitle(oldTitle);
           });
       },

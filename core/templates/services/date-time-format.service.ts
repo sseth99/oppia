@@ -38,14 +38,18 @@ export class DateTimeFormatService {
         hour12: true
       });
     } else if (date.getFullYear() === new Date().getFullYear()) {
-      // moment will return Oct 10
+      // Moment will return Oct 10.
       return moment(date).format('MMM D');
     } else {
-      // moment will return 10/22/35(shortDate)
+      // Moment will return 10/22/35(shortDate).
       return moment(date).format('MM/DD/YY');
     }
   }
-
+  // Returns date along with time.
+  getLocaleDateTimeHourString(millisSinceEpoch: number): string {
+    let date = new Date(millisSinceEpoch);
+    return moment(date).format('MMM D HH:mm A');
+  }
   // Returns just the date.
   getLocaleDateString(millisSinceEpoch: number): string {
     let date = new Date(millisSinceEpoch);

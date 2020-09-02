@@ -18,10 +18,10 @@
 
 require(
   'components/common-layout-directives/common-elements/' +
-  'attribution-guide.directive.ts');
+  'attribution-guide.component.ts');
 require(
   'components/common-layout-directives/common-elements/' +
-  'background-banner.directive.ts');
+  'background-banner.component.ts');
 require('components/summary-tile/exploration-summary-tile.directive.ts');
 
 require('domain/collection/CollectionObjectFactory.ts');
@@ -59,15 +59,17 @@ angular.module('oppia').directive('collectionPlayerPage', [
         '$anchorScroll', '$http', '$location', '$rootScope', '$scope',
         'AlertsService', 'CollectionObjectFactory',
         'CollectionPlaythroughObjectFactory', 'GuestCollectionProgressService',
-        'PageTitleService', 'ReadOnlyCollectionBackendApiService',
-        'UrlInterpolationService', 'UrlService', 'UserService',
+        'LoaderService', 'PageTitleService',
+        'ReadOnlyCollectionBackendApiService', 'UrlInterpolationService',
+        'UrlService', 'UserService',
         'WHITELISTED_COLLECTION_IDS_FOR_SAVING_GUEST_PROGRESS',
         function(
             $anchorScroll, $http, $location, $rootScope, $scope,
             AlertsService, CollectionObjectFactory,
             CollectionPlaythroughObjectFactory, GuestCollectionProgressService,
-            PageTitleService, ReadOnlyCollectionBackendApiService,
-            UrlInterpolationService, UrlService, UserService,
+            LoaderService, PageTitleService,
+            ReadOnlyCollectionBackendApiService, UrlInterpolationService,
+            UrlService, UserService,
             WHITELISTED_COLLECTION_IDS_FOR_SAVING_GUEST_PROGRESS) {
           var ctrl = this;
           ctrl.getStaticImageUrl = function(imagePath) {
@@ -218,7 +220,7 @@ angular.module('oppia').directive('collectionPlayerPage', [
           };
 
           ctrl.getExplorationTitlePosition = function(index) {
-            if (index % 2 === 0 ) {
+            if (index % 2 === 0) {
               return '8px';
             } else if ((index + 1) % 2 === 0 && (index + 1) % 4 !== 0) {
               return '30px';
@@ -245,7 +247,7 @@ angular.module('oppia').directive('collectionPlayerPage', [
                 ctrl.generatePathParameters();
               }
             }, true);
-            $rootScope.loadingMessage = 'Loading';
+            LoaderService.showLoadingScreen('Loading');
             ctrl.collection = null;
             ctrl.collectionPlaythrough = null;
             ctrl.collectionId = UrlService.getCollectionIdFromUrl();
@@ -306,10 +308,8 @@ angular.module('oppia').directive('collectionPlayerPage', [
             // Load the collection the learner wants to view.
             ReadOnlyCollectionBackendApiService.loadCollection(
               ctrl.collectionId).then(
-              function(collectionBackendObject) {
-                ctrl.collection = CollectionObjectFactory.create(
-                  collectionBackendObject);
-                $rootScope.$broadcast('collectionLoaded');
+              function(collection) {
+                ctrl.collection = collection;
 
                 PageTitleService.setPageTitle(
                   ctrl.collection.getTitle() + ' - Oppia');
@@ -322,7 +322,7 @@ angular.module('oppia').directive('collectionPlayerPage', [
                   ctrl.whitelistedCollectionIdsForGuestProgress.indexOf(
                     ctrl.collectionId) !== -1);
                 UserService.getUserInfoAsync().then(function(userInfo) {
-                  $rootScope.loadingMessage = '';
+                  LoaderService.hideLoadingScreen();
                   ctrl.isLoggedIn = userInfo.isLoggedIn();
                   if (!ctrl.isLoggedIn && collectionAllowsGuestProgress &&
                       GuestCollectionProgressService
@@ -337,10 +337,7 @@ angular.module('oppia').directive('collectionPlayerPage', [
                       CollectionPlaythroughObjectFactory.create(
                         nextExplorationId, completedExplorationIds));
                   } else {
-                    ctrl.collectionPlaythrough = (
-                      CollectionPlaythroughObjectFactory
-                        .createFromBackendObject(
-                          collectionBackendObject.playthrough_dict));
+                    ctrl.collectionPlaythrough = collection.getPlaythrough();
                   }
                   ctrl.nextExplorationId =
                     ctrl.collectionPlaythrough.getNextExplorationId();

@@ -253,7 +253,8 @@ describe('Exploration data service', function() {
     var stateName = 'First State';
     var clearWarningsSpy = spyOn(als, 'clearWarnings').and.callThrough();
 
-    $httpBackend.expectPUT('/createhandler/resolved_answers/0/' +
+    $httpBackend.expectPUT(
+      '/createhandler/resolved_answers/0/' +
       encodeURIComponent(stateName)).respond(200);
     eds.resolveAnswers(stateName, []);
     $httpBackend.flush();
@@ -319,7 +320,7 @@ describe('Exploration data service', function() {
       draft_changes: ''
     };
 
-    // data.exploration won't receive a value.
+    // The data.exploration won't receive a value.
     $httpBackend.expect('GET', '/createhandler/data/0?apply_draft=true')
       .respond(500);
     eds.getData(errorCallback).then(function() {

@@ -37,9 +37,11 @@ export class ContextService {
   pageContext = null;
   explorationIsLinkedToStory = false;
   explorationId = null;
+  questionPlayerIsManuallySet = false;
   questionId = null;
   editorContext = null;
   customEntityContext = null;
+  imageSaveDestination = AppConstants.IMAGE_SAVE_DESTINATION_SERVER;
 
   init(editorName: string): void {
     this.editorContext = editorName;
@@ -68,7 +70,7 @@ export class ContextService {
   // This is PAGE_CONTEXT.EXPLORATION_EDITOR or
   // PAGE_CONTEXT.EXPLORATION_PLAYER or PAGE_CONTEXT.QUESTION_EDITOR.
   // If the current page is not one in either EXPLORATION_EDITOR or
-  // EXPLORATION_PLAYER or QUESTION_EDITOR then return PAGE_CONTEXT.OTHER
+  // EXPLORATION_PLAYER or QUESTION_EDITOR then return PAGE_CONTEXT.OTHER.
   getPageContext(): string {
     if (this.pageContext) {
       return this.pageContext;
@@ -96,18 +98,39 @@ export class ContextService {
           this.pageContext = ServicesConstants.PAGE_CONTEXT.SKILL_EDITOR;
           return ServicesConstants.PAGE_CONTEXT.SKILL_EDITOR;
         } else if (
-          pathnameArray[i] === 'practice_session' ||
-            pathnameArray[i] === 'review_test') {
+          pathnameArray[i] === 'session' ||
+            pathnameArray[i] === 'review-test') {
           this.pageContext = ServicesConstants.PAGE_CONTEXT.QUESTION_PLAYER;
           return ServicesConstants.PAGE_CONTEXT.QUESTION_PLAYER;
         } else if (pathnameArray[i] === 'collection_editor') {
           this.pageContext = ServicesConstants.PAGE_CONTEXT.COLLECTION_EDITOR;
           return ServicesConstants.PAGE_CONTEXT.COLLECTION_EDITOR;
+        } else if (pathnameArray[i] === 'topics-and-skills-dashboard') {
+          this.pageContext = (
+            ServicesConstants.PAGE_CONTEXT.TOPICS_AND_SKILLS_DASHBOARD);
+          return ServicesConstants.PAGE_CONTEXT.TOPICS_AND_SKILLS_DASHBOARD;
+        } else if (pathnameArray[i] === 'contributor-dashboard') {
+          this.pageContext = (
+            ServicesConstants.PAGE_CONTEXT.CONTRIBUTOR_DASHBOARD);
+          return ServicesConstants.PAGE_CONTEXT.CONTRIBUTOR_DASHBOARD;
         }
       }
 
       return ServicesConstants.PAGE_CONTEXT.OTHER;
     }
+  }
+  // This is required in cases like when we need to access question player
+  // from the skill editor preview tab.
+  setQuestionPlayerIsOpen(): void {
+    this.questionPlayerIsManuallySet = true;
+  }
+
+  clearQuestionPlayerIsOpen(): void {
+    this.questionPlayerIsManuallySet = false;
+  }
+
+  getQuestionPlayerIsManuallySet(): boolean {
+    return this.questionPlayerIsManuallySet;
   }
 
   canEntityReferToSkills(): boolean {
@@ -127,10 +150,11 @@ export class ContextService {
   }
 
   isInExplorationContext(): boolean {
-    return (this.getPageContext() ===
-        ServicesConstants.PAGE_CONTEXT.EXPLORATION_EDITOR ||
-        this.getPageContext() ===
-        ServicesConstants.PAGE_CONTEXT.EXPLORATION_PLAYER);
+    return (
+      this.getPageContext() ===
+      ServicesConstants.PAGE_CONTEXT.EXPLORATION_EDITOR ||
+      this.getPageContext() ===
+      ServicesConstants.PAGE_CONTEXT.EXPLORATION_PLAYER);
   }
 
   // This function is used in cases where the URL does not specify the
@@ -162,7 +186,7 @@ export class ContextService {
     return decodeURI(pathnameArray[2]);
   }
 
-  // add constants for entity type
+  // Add constants for entity type.
   getEntityType(): string {
     if (this.customEntityContext !== null) {
       return this.customEntityContext.getType();
@@ -180,9 +204,6 @@ export class ContextService {
           return AppConstants.ENTITY_TYPE.QUESTION;
         }
         return AppConstants.ENTITY_TYPE.TOPIC;
-      }
-      if (pathnameArray[i] === 'subtopic') {
-        return AppConstants.ENTITY_TYPE.SUBTOPIC;
       }
       if (pathnameArray[i] === 'story_editor') {
         return AppConstants.ENTITY_TYPE.STORY;
@@ -226,15 +247,18 @@ export class ContextService {
   // Following method helps to know whether exploration editor is
   // in main editing mode or preview mode.
   isInExplorationEditorMode(): boolean {
-    return (this.getPageContext() ===
-        ServicesConstants.PAGE_CONTEXT.EXPLORATION_EDITOR &&
-        this.getEditorTabContext() === (
-          ServicesConstants.EXPLORATION_EDITOR_TAB_CONTEXT.EDITOR));
+    return (
+      this.getPageContext() ===
+      ServicesConstants.PAGE_CONTEXT.EXPLORATION_EDITOR &&
+      this.getEditorTabContext() === (
+        ServicesConstants.EXPLORATION_EDITOR_TAB_CONTEXT.EDITOR));
   }
 
   isInQuestionPlayerMode(): boolean {
     return (
-      this.getPageContext() === ServicesConstants.PAGE_CONTEXT.QUESTION_PLAYER);
+      this.getPageContext() ===
+        ServicesConstants.PAGE_CONTEXT.QUESTION_PLAYER ||
+        this.questionPlayerIsManuallySet);
   }
 
   isInExplorationEditorPage(): boolean {
@@ -251,9 +275,27 @@ export class ContextService {
       ServicesConstants.PAGE_CONTEXT.COLLECTION_EDITOR,
       ServicesConstants.PAGE_CONTEXT.TOPIC_EDITOR,
       ServicesConstants.PAGE_CONTEXT.STORY_EDITOR,
-      ServicesConstants.PAGE_CONTEXT.SKILL_EDITOR
+      ServicesConstants.PAGE_CONTEXT.SKILL_EDITOR,
+      ServicesConstants.PAGE_CONTEXT.TOPICS_AND_SKILLS_DASHBOARD,
+      ServicesConstants.PAGE_CONTEXT.CONTRIBUTOR_DASHBOARD
     ];
     return (allowedPageContext.includes(currentPageContext));
+  }
+
+  // Sets the current context to save images in local storage. Depending on this
+  // value, new images can be either saved in the localStorage or uploaded
+  // directly to the datastore.
+  resetImageSaveDestination(): void {
+    this.imageSaveDestination = AppConstants.IMAGE_SAVE_DESTINATION_SERVER;
+  }
+
+  setImageSaveDestinationToLocalStorage(): void {
+    this.imageSaveDestination = (
+      AppConstants.IMAGE_SAVE_DESTINATION_LOCAL_STORAGE);
+  }
+
+  getImageSaveDestination(): string {
+    return this.imageSaveDestination;
   }
 }
 

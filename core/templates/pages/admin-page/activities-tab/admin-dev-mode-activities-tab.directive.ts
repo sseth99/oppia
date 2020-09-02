@@ -27,7 +27,8 @@ require('pages/admin-page/admin-page.constants.ajs.ts');
 angular.module('oppia').directive('adminDevModeActivitiesTab', [
   '$http', '$rootScope', '$window', 'AdminDataService',
   'AdminTaskManagerService', 'UrlInterpolationService', 'ADMIN_HANDLER_URL',
-  function($http, $rootScope, $window, AdminDataService,
+  function(
+      $http, $rootScope, $window, AdminDataService,
       AdminTaskManagerService, UrlInterpolationService, ADMIN_HANDLER_URL) {
     return {
       restrict: 'E',
@@ -196,13 +197,13 @@ angular.module('oppia').directive('adminDevModeActivitiesTab', [
           ctrl.DEMO_COLLECTIONS = {};
           ctrl.DEMO_EXPLORATIONS = {};
           ctrl.reloadingAllExplorationPossible = false;
-          AdminDataService.getDataAsync().then(function(response) {
-            ctrl.DEMO_EXPLORATIONS = response.demo_explorations;
-            ctrl.DEMO_COLLECTIONS = response.demo_collections;
-            demoExplorationIds = response.demo_exploration_ids;
+          AdminDataService.getDataAsync().then(function(adminDataObject) {
+            ctrl.DEMO_EXPLORATIONS = adminDataObject.demoExplorations;
+            ctrl.DEMO_COLLECTIONS = adminDataObject.demoCollections;
+            demoExplorationIds = adminDataObject.demoExplorationIds;
             ctrl.reloadingAllExplorationPossible = true;
             // TODO(#8521): Remove the use of $rootScope.$apply()
-            // once the directive is migrated to angular
+            // once the directive is migrated to angular.
             $rootScope.$apply();
           });
         };

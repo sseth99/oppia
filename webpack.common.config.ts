@@ -23,10 +23,11 @@ const webpack = require('webpack');
 const macros = require('./webpack.common.macros.ts');
 
 var htmlMinifyConfig = {
-  ignoreCustomFragments: [
-    /\{\{[\s\S]*?\}\}/,
-    /<\{%[\s\S]*?%\}/,
-    /<\[[\s\S]*?\]>/]
+  ignoreCustomFragments: [/<\[[\s\S]*?\]>/],
+  removeAttributeQuotes: false,
+  caseSensitive: true,
+  customAttrSurround: [[/#/, /(?:)/], [/\*/, /(?:)/], [/\[?\(?/, /(?:)/]],
+  customAttrAssign: [/\)?\]?=/]
 };
 var commonPrefix = './core/templates';
 var defaultMeta = {
@@ -51,95 +52,95 @@ module.exports = {
     }
   },
   entry: {
-    about: commonPrefix + '/pages/about-page/about-page.scripts.ts',
-    admin: commonPrefix + '/pages/admin-page/admin-page.scripts.ts',
+    about: commonPrefix + '/pages/about-page/about-page.import.ts',
+    admin: commonPrefix + '/pages/admin-page/admin-page.import.ts',
     classroom:
-      commonPrefix + '/pages/classroom-page/classroom-page.scripts.ts',
+      commonPrefix + '/pages/classroom-page/classroom-page.import.ts',
     collection_editor:
       commonPrefix + '/pages/collection-editor-page/' +
-      'collection-editor-page.scripts.ts',
+      'collection-editor-page.import.ts',
     collection_player:
       commonPrefix + '/pages/collection-player-page/' +
-      'collection-player-page.scripts.ts',
-    contact: commonPrefix + '/pages/contact-page/contact-page.scripts.ts',
-    console_errors: commonPrefix + '/tests/console_errors.scripts.ts',
+      'collection-player-page.import.ts',
+    contact: commonPrefix + '/pages/contact-page/contact-page.import.ts',
+    console_errors: commonPrefix + '/tests/console_errors.import.ts',
     creator_dashboard:
       commonPrefix + '/pages/creator-dashboard-page/' +
-      'creator-dashboard-page.scripts.ts',
-    community_dashboard:
-      commonPrefix + '/pages/community-dashboard-page/' +
-      'community-dashboard-page.scripts.ts',
+      'creator-dashboard-page.import.ts',
+    contributor_dashboard:
+      commonPrefix + '/pages/contributor-dashboard-page/' +
+      'contributor-dashboard-page.import.ts',
     delete_account:
       commonPrefix + '/pages/delete-account-page/' +
-        'delete-account-page.scripts.ts',
-    donate: commonPrefix + '/pages/donate-page/donate-page.scripts.ts',
+        'delete-account-page.import.ts',
+    donate: commonPrefix + '/pages/donate-page/donate-page.import.ts',
     email_dashboard:
       commonPrefix +
-      '/pages/email-dashboard-pages/email-dashboard-page.scripts.ts',
+      '/pages/email-dashboard-pages/email-dashboard-page.import.ts',
     email_dashboard_result:
       commonPrefix +
-      '/pages/email-dashboard-pages/email-dashboard-result.scripts.ts',
-    error: commonPrefix + '/pages/error-pages/error-page.scripts.ts',
+      '/pages/email-dashboard-pages/email-dashboard-result.import.ts',
+    error: commonPrefix + '/pages/error-pages/error-page.import.ts',
     exploration_editor:
       commonPrefix + '/pages/exploration-editor-page/' +
-      'exploration-editor-page.scripts.ts',
+      'exploration-editor-page.import.ts',
     exploration_player:
       commonPrefix + '/pages/exploration-player-page/' +
-      'exploration-player-page.scripts.ts',
+      'exploration-player-page.import.ts',
     get_started:
-      commonPrefix + '/pages/get-started-page/get-started-page.scripts.ts',
+      commonPrefix + '/pages/get-started-page/get-started-page.import.ts',
     landing:
       commonPrefix + '/pages/landing-pages/topic-landing-page/' +
-      'topic-landing-page.scripts.ts',
+      'topic-landing-page.import.ts',
     learner_dashboard:
       commonPrefix + '/pages/learner-dashboard-page/' +
-      'learner-dashboard-page.scripts.ts',
-    library: commonPrefix + '/pages/library-page/library-page.scripts.ts',
+      'learner-dashboard-page.import.ts',
+    library: commonPrefix + '/pages/library-page/library-page.import.ts',
     maintenance:
-      commonPrefix + '/pages/maintenance-page/maintenance-page.scripts.ts',
+      commonPrefix + '/pages/maintenance-page/maintenance-page.import.ts',
     moderator:
-      commonPrefix + '/pages/moderator-page/moderator-page.scripts.ts',
+      commonPrefix + '/pages/moderator-page/moderator-page.import.ts',
     notifications_dashboard:
       commonPrefix + '/pages/notifications-dashboard-page/' +
-      'notifications-dashboard-page.scripts.ts',
+      'notifications-dashboard-page.import.ts',
     pending_account_deletion:
       commonPrefix + '/pages/pending-account-deletion-page/' +
-      'pending-account-deletion-page.scripts.ts',
+      'pending-account-deletion-page.import.ts',
     practice_session:
       commonPrefix + '/pages/practice-session-page/' +
-        'practice-session-page.scripts.ts',
-    privacy: commonPrefix + '/pages/privacy-page/privacy-page.scripts.ts',
+        'practice-session-page.import.ts',
+    privacy: commonPrefix + '/pages/privacy-page/privacy-page.import.ts',
     preferences:
-      commonPrefix + '/pages/preferences-page/preferences-page.scripts.ts',
-    profile: commonPrefix + '/pages/profile-page/profile-page.scripts.ts',
+      commonPrefix + '/pages/preferences-page/preferences-page.import.ts',
+    profile: commonPrefix + '/pages/profile-page/profile-page.import.ts',
     review_test:
-      commonPrefix + '/pages/review-test-page/review-test-page.scripts.ts',
-    signup: commonPrefix + '/pages/signup-page/signup-page.scripts.ts',
+      commonPrefix + '/pages/review-test-page/review-test-page.import.ts',
+    signup: commonPrefix + '/pages/signup-page/signup-page.import.ts',
     skill_editor:
-      commonPrefix + '/pages/skill-editor-page/skill-editor-page.scripts.ts',
-    splash: commonPrefix + '/pages/splash-page/splash-page.scripts.ts',
+      commonPrefix + '/pages/skill-editor-page/skill-editor-page.import.ts',
+    splash: commonPrefix + '/pages/splash-page/splash-page.import.ts',
     stewards:
       commonPrefix + '/pages/landing-pages/stewards-landing-page/' +
-      'stewards-landing-page.scripts.ts',
+      'stewards-landing-page.import.ts',
     story_editor:
-      commonPrefix + '/pages/story-editor-page/story-editor-page.scripts.ts',
+      commonPrefix + '/pages/story-editor-page/story-editor-page.import.ts',
     story_viewer:
-      commonPrefix + '/pages/story-viewer-page/story-viewer-page.scripts.ts',
+      commonPrefix + '/pages/story-viewer-page/story-viewer-page.import.ts',
     subtopic_viewer:
       commonPrefix +
-      '/pages/subtopic-viewer-page/subtopic-viewer-page.scripts.ts',
-    teach: commonPrefix + '/pages/teach-page/teach-page.scripts.ts',
-    terms: commonPrefix + '/pages/terms-page/terms-page.scripts.ts',
-    thanks: commonPrefix + '/pages/thanks-page/thanks-page.scripts.ts',
+      '/pages/subtopic-viewer-page/subtopic-viewer-page.import.ts',
+    teach: commonPrefix + '/pages/teach-page/teach-page.import.ts',
+    terms: commonPrefix + '/pages/terms-page/terms-page.import.ts',
+    thanks: commonPrefix + '/pages/thanks-page/thanks-page.import.ts',
     topic_editor:
-      commonPrefix + '/pages/topic-editor-page/topic-editor-page.scripts.ts',
+      commonPrefix + '/pages/topic-editor-page/topic-editor-page.import.ts',
     topics_and_skills_dashboard: (
       commonPrefix +
       '/pages/topics-and-skills-dashboard-page/' +
-      'topics-and-skills-dashboard-page.scripts.ts'
+      'topics-and-skills-dashboard-page.import.ts'
     ),
     topic_viewer:
-      commonPrefix + '/pages/topic-viewer-page/topic-viewer-page.scripts.ts',
+      commonPrefix + '/pages/topic-viewer-page/topic-viewer-page.import.ts',
   },
   plugins: [
     new HtmlWebpackPlugin({
@@ -162,10 +163,11 @@ module.exports = {
       filename: 'admin-page.mainpage.html',
       meta: {
         name: defaultMeta.name,
-        description: 'With Oppia, you can access free lessons on math, ' +
-          'physics, statistics, chemistry, music, history and more from ' +
-          'anywhere in the world. Learn from our pre-existing ' +
-          'explorations, or teach and create your own.'
+        description: 'With Oppia, you can access free lessons on ' +
+          'math, physics, statistics, chemistry, music, history and ' +
+          'more from anywhere in the world. Oppia is a nonprofit ' +
+          'with the mission of providing high-quality ' +
+          'education to those who lack access to it.'
       },
       template: commonPrefix + '/pages/admin-page/admin-page.mainpage.html',
       minify: htmlMinifyConfig,
@@ -216,6 +218,11 @@ module.exports = {
     new HtmlWebpackPlugin({
       chunks: ['console_errors'],
       filename: 'console_errors.html',
+      meta: {
+        name: defaultMeta.name,
+        description: 'Contact the Oppia team, submit feedback, and learn ' +
+          'how to get involved with the Oppia project.'
+      },
       template: commonPrefix + '/tests/console_errors.html',
       minify: htmlMinifyConfig,
       inject: false
@@ -243,12 +250,12 @@ module.exports = {
       inject: false
     }),
     new HtmlWebpackPlugin({
-      chunks: ['community_dashboard'],
-      filename: 'community-dashboard-page.mainpage.html',
+      chunks: ['contributor_dashboard'],
+      filename: 'contributor-dashboard-page.mainpage.html',
       meta: defaultMeta,
       template:
-        commonPrefix + '/pages/community-dashboard-page/' +
-        'community-dashboard-page.mainpage.html',
+        commonPrefix + '/pages/contributor-dashboard-page/' +
+        'contributor-dashboard-page.mainpage.html',
       minify: htmlMinifyConfig,
       inject: false
     }),
@@ -297,6 +304,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       chunks: ['error'],
       filename: 'error-iframed.mainpage.html',
+      meta: defaultMeta,
       template: commonPrefix + '/pages/error-pages/error-iframed.mainpage.html',
       minify: htmlMinifyConfig,
       inject: false
@@ -418,6 +426,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       chunks: ['maintenance'],
       filename: 'maintenance-page.mainpage.html',
+      meta: defaultMeta,
       template:
         commonPrefix + '/pages/maintenance-page/maintenance-page.mainpage.html',
       minify: htmlMinifyConfig,
@@ -461,6 +470,7 @@ module.exports = {
     new HtmlWebpackPlugin({
       chunks: ['practice_session'],
       filename: 'practice-session-page.mainpage.html',
+      meta: defaultMeta,
       template:
         commonPrefix + '/pages/practice-session-page/' +
         'practice-session-page.mainpage.html',
@@ -671,25 +681,38 @@ module.exports = {
         path.resolve(__dirname, 'typings')
       ],
       use: [
+        'cache-loader',
         {
           loader: 'ts-loader',
           options: {
             // Typescript checks do the type checking.
             transpileOnly: true
           }
+        },
+        {
+          loader: 'angular2-template-loader'
         }
       ]
     },
     {
       test: {
         include: /.html$/,
-        exclude: /directive\.html$/
+        exclude: /(directive|component)\.html$/
       },
-      loader: 'underscore-template-loader'
+      loader: ['cache-loader', 'underscore-template-loader']
     },
     {
-      test: /directive\.html$/,
-      loader: 'html-loader'
+      test: /(directive|component)\.html$/,
+      use: [
+        'cache-loader',
+        {
+          loader: 'html-loader',
+          options: {
+            attributes: false,
+            minimize: htmlMinifyConfig,
+          }
+        }
+      ]
     },
     {
       test: /\.css$/,
@@ -697,8 +720,20 @@ module.exports = {
         path.resolve(__dirname, 'extensions'),
         path.resolve(__dirname, 'node_modules'),
       ],
-      use: ['style-loader', 'css-loader']
+      use: [
+        'cache-loader',
+        'style-loader',
+        {
+          loader: 'css-loader',
+          options: {
+            url: false,
+          }
+        }
+      ]
     }]
+  },
+  externals: {
+    jquery: 'jQuery'
   },
   optimization: {
     runtimeChunk: 'single',

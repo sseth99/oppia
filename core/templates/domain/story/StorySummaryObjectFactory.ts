@@ -20,13 +20,29 @@
 import { downgradeInjectable } from '@angular/upgrade/static';
 import { Injectable } from '@angular/core';
 
+export interface StorySummaryBackendDict {
+  'id': string;
+  'title': string;
+  'node_titles': string[];
+  'thumbnail_filename': string;
+  'thumbnail_bg_color': string;
+  'description': string;
+  'story_is_published': boolean;
+  'completed_node_titles': string[],
+  'url_fragment': string
+}
+
 export class StorySummary {
   constructor(
     private _id: string,
     private _title: string,
-    private _nodeCount: number,
+    private _nodeTitles: string[],
+    private _thumbnailFilename: string,
+    private _thumbnailBgColor: string,
     private _description: string,
-    private _storyIsPublished: boolean
+    private _storyIsPublished: boolean,
+    private _completedNodeTitles: string[],
+    private _urlFragment: string,
   ) {}
 
   getId(): string {
@@ -37,8 +53,20 @@ export class StorySummary {
     return this._title;
   }
 
-  getNodeCount(): number {
-    return this._nodeCount;
+  getNodeTitles(): string[] {
+    return this._nodeTitles.slice();
+  }
+
+  getThumbnailFilename(): string {
+    return this._thumbnailFilename;
+  }
+
+  isNodeCompleted(nodeTitle: string): boolean {
+    return (this._completedNodeTitles.indexOf(nodeTitle) !== -1);
+  }
+
+  getThumbnailBgColor(): string {
+    return this._thumbnailBgColor;
   }
 
   getDescription(): string {
@@ -48,27 +76,28 @@ export class StorySummary {
   isStoryPublished(): boolean {
     return this._storyIsPublished;
   }
+
+  getUrlFragment(): string {
+    return this._urlFragment;
+  }
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class StorySummaryObjectFactory {
-  createFromBackendDict(storySummaryBackendDict: {
-    id: string;
-    title: string;
-    // eslint-disable-next-line camelcase
-    node_count: number;
-    description: string;
-    // eslint-disable-next-line camelcase
-    story_is_published: boolean;
-  }): StorySummary {
+  createFromBackendDict(
+      storySummaryBackendDict: StorySummaryBackendDict): StorySummary {
     return new StorySummary(
       storySummaryBackendDict.id,
       storySummaryBackendDict.title,
-      storySummaryBackendDict.node_count,
+      storySummaryBackendDict.node_titles,
+      storySummaryBackendDict.thumbnail_filename,
+      storySummaryBackendDict.thumbnail_bg_color,
       storySummaryBackendDict.description,
-      storySummaryBackendDict.story_is_published
+      storySummaryBackendDict.story_is_published,
+      storySummaryBackendDict.completed_node_titles,
+      storySummaryBackendDict.url_fragment
     );
   }
 }

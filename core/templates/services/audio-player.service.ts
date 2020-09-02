@@ -16,6 +16,8 @@
  * @fileoverview Service to operate the playback of audio.
  */
 
+import { EventEmitter } from '@angular/core';
+
 angular.module('oppia').factory('AudioPlayerService', [
   '$q', '$timeout', 'AssetsBackendApiService', 'AudioTranslationManagerService',
   'ContextService', 'ngAudio',
@@ -25,6 +27,8 @@ angular.module('oppia').factory('AudioPlayerService', [
     var _currentTrackFilename = null;
     var _currentTrack = null;
     var _currentTrackDuration = null;
+
+    var _autoplayAudioEventEmitter = new EventEmitter();
 
     var _load = function(
         filename, successCallback, errorCallback) {
@@ -36,7 +40,7 @@ angular.module('oppia').factory('AudioPlayerService', [
             _currentTrack = ngAudio.load(blobUrl);
             _currentTrackFilename = filename;
 
-            // ngAudio doesn't seem to provide any way of detecting
+            // Directive ngAudio doesn't seem to provide any way of detecting
             // when native audio object has finished loading -- see
             // https://github.com/danielstern/ngAudio/issues/139. It seems
             // that after creating an ngAudio object, the native audio
@@ -165,6 +169,9 @@ angular.module('oppia').factory('AudioPlayerService', [
       clear: function() {
         _currentTrack = null;
         _currentTrackFilename = null;
+      },
+      get onAutoplayAudio() {
+        return _autoplayAudioEventEmitter;
       }
     };
   }

@@ -61,7 +61,8 @@ import { WrittenTranslationsObjectFactory } from
 import { UpgradedServices } from 'services/UpgradedServices';
 // ^^^ This block is to be removed.
 
-require('components/state-editor/state-editor-properties-services/' +
+require(
+  'components/state-editor/state-editor-properties-services/' +
   'state-solicit-answer-details.service.ts');
 require('pages/exploration-editor-page/services/exploration-states.service.ts');
 
@@ -157,7 +158,14 @@ describe('ExplorationStatesService', function() {
         param_changes: [],
         interaction: {
           answer_groups: [{
-            rule_specs: [{rule_type: 'Contains', inputs: {x: 'hola'}}],
+            rule_input_translations: {},
+            rule_types_to_inputs: {
+              Contains: [
+                {
+                  x: 'hola'
+                }
+              ]
+            },
             outcome: {
               dest: 'Me Llamo',
               feedback: {
@@ -167,6 +175,15 @@ describe('ExplorationStatesService', function() {
               labelled_as_correct: true,
             },
           }],
+          customization_args: {
+            placeholder: {
+              value: {
+                content_id: 'ca_placeholder_0',
+                unicode_str: ''
+              }
+            },
+            rows: { value: 1 }
+          },
           default_outcome: {
             dest: 'Hola',
             feedback: {
@@ -242,7 +259,8 @@ describe('ExplorationStatesService', function() {
         ExplorationStatesService.registerOnStateInteractionSavedCallback(spy);
         ExplorationStatesService.saveInteractionAnswerGroups('Hola', []);
 
-        expect(spy).toHaveBeenCalledWith('Hola');
+        expect(spy)
+          .toHaveBeenCalledWith(ExplorationStatesService.getState('Hola'));
       });
     });
   });

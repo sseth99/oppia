@@ -55,11 +55,11 @@ class UserGlobalPrefs(python_utils.OBJECT):
             can_receive_feedback_message_email: bool. Whether the user can
                 receive emails when users submit feedback to their explorations.
             can_receive_subscription_email: bool. Whether the user can receive
-                 subscription emails notifying them about new explorations.
+                subscription emails notifying them about new explorations.
         """
         self.can_receive_email_updates = can_receive_email_updates
         self.can_receive_editor_role_email = can_receive_editor_role_email
-        self.can_receive_feedback_message_email = ( #pylint: disable=invalid-name
+        self.can_receive_feedback_message_email = ( # pylint: disable=invalid-name
             can_receive_feedback_message_email)
         self.can_receive_subscription_email = can_receive_subscription_email
 
@@ -106,7 +106,7 @@ class UserExplorationPrefs(python_utils.OBJECT):
     def to_dict(self):
         """Return dictionary representation of UserExplorationPrefs.
 
-        Return:
+        Returns:
             dict. The keys of the dict are:
                 'mute_feedback_notifications': bool. Whether the given user has
                     muted feedback emails.
@@ -276,15 +276,43 @@ class LearnerPlaylist(python_utils.OBJECT):
 class UserContributionScoring(python_utils.OBJECT):
     """Domain object for UserContributionScoringModel."""
 
-    def __init__(self, user_id, score_category, score, has_email_been_sent):
+    def __init__(self, user_id, score_category, score, onboarding_email_sent):
         self.user_id = user_id
         self.score_category = score_category
         self.score = score
-        self.has_email_been_sent = has_email_been_sent
+        self.onboarding_email_sent = onboarding_email_sent
+
+    def increment_score(self, increment_by):
+        """Increments the score of the user in the category by the given amount.
+
+        In the first version of the scoring system, the increment_by quantity
+        will be +1, i.e, each user gains a point for a successful contribution
+        and doesn't lose score in any way.
+
+        Args:
+            increment_by: float. The amount to increase the score of the user
+                by.
+        """
+        self.score += increment_by
+
+    def can_user_review_category(self):
+        """Checks if user can review suggestions in category score_category.
+        If the user has score above the minimum required score, then the user
+        is allowed to review.
+
+        Returns:
+            bool. Whether the user can review suggestions under category
+            score_category.
+        """
+        return self.score >= feconf.MINIMUM_SCORE_REQUIRED_TO_REVIEW
+
+    def mark_onboarding_email_as_sent(self):
+        """Marks the email as sent."""
+        self.onboarding_email_sent = True
 
 
-class UserCommunityRights(python_utils.OBJECT):
-    """Domain object for the UserCommunityRightsModel."""
+class UserContributionRights(python_utils.OBJECT):
+    """Domain object for the UserContributionRightsModel."""
 
     def __init__(
             self, user_id, can_review_translation_for_language_codes,

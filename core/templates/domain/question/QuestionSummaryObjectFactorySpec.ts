@@ -16,18 +16,19 @@
  * @fileoverview Unit tests for QuestionSummaryObjectFactory.
  */
 
-import { QuestionSummaryObjectFactory } from
+import { QuestionSummaryBackendDict, QuestionSummaryObjectFactory } from
   'domain/question/QuestionSummaryObjectFactory';
 
 describe('Question summary object factory', () => {
   let questionSummaryObjectFactory: QuestionSummaryObjectFactory;
-  let summaryDict: any;
+  let summaryDict: QuestionSummaryBackendDict;
 
   beforeEach(() => {
     questionSummaryObjectFactory = new QuestionSummaryObjectFactory();
     summaryDict = {
       id: 'question_id',
-      question_content: 'Question 1'
+      question_content: 'Question 1',
+      interaction_id: 'TextInput'
     };
   });
 
@@ -36,6 +37,7 @@ describe('Question summary object factory', () => {
       questionSummaryObjectFactory.createFromBackendDict(summaryDict));
     expect(questionSummary.getQuestionId()).toEqual('question_id');
     expect(questionSummary.getQuestionContent()).toEqual('Question 1');
+    expect(questionSummary.getInteractionId()).toEqual('TextInput');
   });
 
   it('should change question content in a question summary', () => {

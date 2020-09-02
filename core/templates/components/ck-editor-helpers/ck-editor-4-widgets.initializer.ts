@@ -26,7 +26,8 @@ require('services/context.service.ts');
 angular.module('oppia').run([
   '$compile', '$rootScope', '$timeout', 'RteHelperService',
   'HtmlEscaperService', 'ContextService',
-  function($compile, $rootScope, $timeout, RteHelperService,
+  function(
+      $compile, $rootScope, $timeout, RteHelperService,
       HtmlEscaperService, ContextService) {
     var _RICH_TEXT_COMPONENTS = RteHelperService.getRichTextComponents();
     _RICH_TEXT_COMPONENTS.forEach(function(componentDefn) {
@@ -133,7 +134,14 @@ angular.module('oppia').run([
                 function() {
                   var newWidgetSelector = (
                     '[data-cke-widget-id="' + that.id + '"]');
-                  editor.editable().findOne(newWidgetSelector).remove();
+                  // The below check is required, since without this, even a
+                  // valid RTE component was getting removed from the editor
+                  // when 'Cancel' was clicked in the customization modal.
+                  var widgetElement = editor.editable().findOne(
+                    newWidgetSelector);
+                  if (widgetElement && widgetElement.getText() === '') {
+                    widgetElement.remove();
+                  }
                 });
             },
             /**
@@ -153,7 +161,8 @@ angular.module('oppia').run([
              * true iff "element" is an instance of this widget.
              */
             upcast: function(element) {
-              return (element.name !== 'p' &&
+              return (
+                element.name !== 'p' &&
                       element.children.length > 0 &&
                       (
                         <CKEDITOR.htmlParser.element>element.children[0]

@@ -53,40 +53,41 @@ import subprocess
 import sys
 import threading
 import time
+import unittest
 
 import python_utils
 
 from . import common
 from . import concurrent_task_utils
-from . import setup
-from . import setup_gae
-
+from . import install_third_party_libs
 
 DIRS_TO_ADD_TO_SYS_PATH = [
     os.path.join(common.OPPIA_TOOLS_DIR, 'pylint-1.9.4'),
+    common.GOOGLE_APP_ENGINE_SDK_HOME,
+    os.path.join(common.OPPIA_TOOLS_DIR, 'webtest-%s' % common.WEBTEST_VERSION),
     os.path.join(
-        common.OPPIA_TOOLS_DIR, 'google_appengine_1.9.67', 'google_appengine'),
-    os.path.join(common.OPPIA_TOOLS_DIR, 'webtest-2.0.33'),
-    os.path.join(
-        common.OPPIA_TOOLS_DIR, 'google_appengine_1.9.67', 'google_appengine',
-        'lib', 'webob_0_9'),
-    os.path.join(common.OPPIA_TOOLS_DIR, 'selenium-3.13.0'),
-    os.path.join(common.OPPIA_TOOLS_DIR, 'Pillow-6.0.0'),
+        common.GOOGLE_APP_ENGINE_SDK_HOME, 'lib', 'webob_0_9'),
+    os.path.join(common.OPPIA_TOOLS_DIR, 'Pillow-%s' % common.PILLOW_VERSION),
     os.path.join(common.OPPIA_TOOLS_DIR, 'psutil-%s' % common.PSUTIL_VERSION),
+    os.path.join(
+        common.OPPIA_TOOLS_DIR, 'PyGithub-%s' % common.PYGITHUB_VERSION),
     common.CURR_DIR,
-    os.path.join(common.THIRD_PARTY_DIR, 'backports.functools_lru_cache-1.5'),
-    os.path.join(common.THIRD_PARTY_DIR, 'beautifulsoup4-4.7.1'),
-    os.path.join(common.THIRD_PARTY_DIR, 'bleach-3.1.0'),
+    os.path.join(common.THIRD_PARTY_DIR, 'backports.functools_lru_cache-1.6.1'),
+    os.path.join(common.THIRD_PARTY_DIR, 'beautifulsoup4-4.9.1'),
+    os.path.join(common.THIRD_PARTY_DIR, 'bleach-3.1.5'),
     os.path.join(common.THIRD_PARTY_DIR, 'callbacks-0.3.0'),
     os.path.join(common.THIRD_PARTY_DIR, 'gae-cloud-storage-1.9.22.1'),
     os.path.join(common.THIRD_PARTY_DIR, 'gae-mapreduce-1.9.22.0'),
     os.path.join(common.THIRD_PARTY_DIR, 'gae-pipeline-1.9.22.1'),
     os.path.join(common.THIRD_PARTY_DIR, 'graphy-1.0.0'),
-    os.path.join(common.THIRD_PARTY_DIR, 'html5lib-python-1.0.1'),
-    os.path.join(common.THIRD_PARTY_DIR, 'mutagen-1.42.0'),
-    os.path.join(common.THIRD_PARTY_DIR, 'simplejson-3.16.0'),
-    os.path.join(common.THIRD_PARTY_DIR, 'six-1.12.0'),
-    os.path.join(common.THIRD_PARTY_DIR, 'soupsieve-1.9.1'),
+    os.path.join(common.THIRD_PARTY_DIR, 'html5lib-python-1.1'),
+    os.path.join(common.THIRD_PARTY_DIR, 'mutagen-1.43.0'),
+    os.path.join(common.THIRD_PARTY_DIR, 'packaging-20.4'),
+    os.path.join(common.THIRD_PARTY_DIR, 'pylatexenc-2.6'),
+    os.path.join(common.THIRD_PARTY_DIR, 'redis-3.5.3'),
+    os.path.join(common.THIRD_PARTY_DIR, 'simplejson-3.17.0'),
+    os.path.join(common.THIRD_PARTY_DIR, 'six-1.15.0'),
+    os.path.join(common.THIRD_PARTY_DIR, 'soupsieve-1.9.5'),
     os.path.join(common.THIRD_PARTY_DIR, 'webencodings-0.5.1'),
 ]
 
@@ -102,7 +103,8 @@ TEST_RUNNER_PATH = os.path.join(os.getcwd(), 'core', 'tests', 'gae_suite.py')
 LOG_LINE_PREFIX = 'LOG_INFO_TEST: '
 _LOAD_TESTS_DIR = os.path.join(os.getcwd(), 'core', 'tests', 'load_tests')
 
-_PARSER = argparse.ArgumentParser(description="""
+_PARSER = argparse.ArgumentParser(
+    description="""
 Run this script from the oppia root folder:
     python -m scripts.run_backend_tests
 IMPORTANT: Only one of --test_path and --test_target should be specified.
@@ -178,7 +180,10 @@ class TestingTaskSpec(python_utils.OBJECT):
         else:
             exc_list = [sys.executable, TEST_RUNNER_PATH, test_target_flag]
 
-        return run_shell_cmd(exc_list)
+        result = run_shell_cmd(exc_list)
+
+        return [concurrent_task_utils.TaskResult(
+            None, None, None, [result])]
 
 
 def _get_all_test_targets(test_path=None, include_load_tests=True):
@@ -201,10 +206,7 @@ def _get_all_test_targets(test_path=None, include_load_tests=True):
         python_module = importlib.import_module(test_target_path)
         for name, clazz in inspect.getmembers(
                 python_module, predicate=inspect.isclass):
-            all_base_classes = [base_class.__name__ for base_class in
-                                (inspect.getmro(clazz))]
-            # Check that it is a subclass of 'AppEngineTestBase'.
-            if 'AppEngineTestBase' in all_base_classes:
+            if unittest.TestCase in inspect.getmro(clazz):
                 class_names.append(name)
 
         return [
@@ -240,8 +242,9 @@ def main(args=None):
     """Run the tests."""
     parsed_args = _PARSER.parse_args(args=args)
 
-    setup.main(args=[])
-    setup_gae.main(args=[])
+    # Make sure that third-party libraries are up-to-date before running tests,
+    # otherwise import errors may result.
+    install_third_party_libs.main()
 
     for directory in DIRS_TO_ADD_TO_SYS_PATH:
         if not os.path.exists(os.path.dirname(directory)):
@@ -263,8 +266,8 @@ def main(args=None):
                 os.path.join(
                     common.OPPIA_TOOLS_DIR,
                     'coverage-%s' % common.COVERAGE_VERSION)):
-            raise Exception('Coverage is not installed, please run the start '
-                            'script.')
+            raise Exception(
+                'Coverage is not installed, please run the start script.')
 
         pythonpath_components = [COVERAGE_DIR]
         if os.environ.get('PYTHONPATH'):
@@ -273,8 +276,8 @@ def main(args=None):
         os.environ['PYTHONPATH'] = os.pathsep.join(pythonpath_components)
 
     if parsed_args.test_target and parsed_args.test_path:
-        raise Exception('At most one of test_path and test_target '
-                        'should be specified.')
+        raise Exception(
+            'At most one of test_path and test_target should be specified.')
     if parsed_args.test_path and '.' in parsed_args.test_path:
         raise Exception('The delimiter in test_path should be a slash (/)')
     if parsed_args.test_target and '/' in parsed_args.test_target:
@@ -312,7 +315,8 @@ def main(args=None):
         test = TestingTaskSpec(
             test_target, parsed_args.generate_coverage_report)
         task = concurrent_task_utils.create_task(
-            test.run, parsed_args.verbose, semaphore, name=test_target)
+            test.run, parsed_args.verbose, semaphore, name=test_target,
+            report_enabled=False)
         task_to_taskspec[task] = test
         tasks.append(task)
 
@@ -384,7 +388,8 @@ def main(args=None):
         else:
             try:
                 tests_run_regex_match = re.search(
-                    r'Ran ([0-9]+) tests? in ([0-9\.]+)s', task.output)
+                    r'Ran ([0-9]+) tests? in ([0-9\.]+)s',
+                    task.task_results[0].get_report()[0])
                 test_count = int(tests_run_regex_match.group(1))
                 test_time = float(tests_run_regex_match.group(2))
                 python_utils.PRINT(
@@ -393,7 +398,7 @@ def main(args=None):
             except Exception:
                 python_utils.PRINT(
                     'An unexpected error occurred. '
-                    'Task output:\n%s' % task.output)
+                    'Task output:\n%s' % task.task_results[0].get_report()[0])
 
         total_count += test_count
 

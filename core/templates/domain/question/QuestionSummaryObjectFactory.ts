@@ -20,14 +20,22 @@
 import { downgradeInjectable } from '@angular/upgrade/static';
 import { Injectable } from '@angular/core';
 
+export interface QuestionSummaryBackendDict {
+  'id': string;
+  'question_content': string;
+  'interaction_id': string;
+}
+
 export class QuestionSummary {
   _questionId: string;
   _questionContent: string;
+  _interactionId: string;
 
   constructor(
-      questionId: string, questionContent: string) {
+      questionId: string, questionContent: string, interactionId: string) {
     this._questionId = questionId;
     this._questionContent = questionContent;
+    this._interactionId = interactionId;
   }
 
   getQuestionId(): string {
@@ -36,6 +44,10 @@ export class QuestionSummary {
 
   getQuestionContent(): string {
     return this._questionContent;
+  }
+
+  getInteractionId(): string {
+    return this._interactionId;
   }
 
   setQuestionContent(questionContent: string): void {
@@ -47,10 +59,12 @@ export class QuestionSummary {
   providedIn: 'root'
 })
 export class QuestionSummaryObjectFactory {
-  createFromBackendDict(backendDict: any): QuestionSummary {
+  createFromBackendDict(
+      backendDict: QuestionSummaryBackendDict): QuestionSummary {
     return new QuestionSummary(
       backendDict.id,
-      backendDict.question_content);
+      backendDict.question_content,
+      backendDict.interaction_id);
   }
 }
 

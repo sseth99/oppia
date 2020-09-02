@@ -19,11 +19,9 @@ from __future__ import unicode_literals  # pylint: disable=import-only-modules
 
 import logging
 
-from constants import constants
 from core.controllers import acl_decorators
 from core.controllers import base
 from core.domain import email_manager
-from core.domain import question_services
 from core.domain import skill_services
 from core.domain import story_fetchers
 from core.domain import topic_fetchers
@@ -37,9 +35,6 @@ class TopicViewerPage(base.BaseHandler):
     def get(self, _):
         """Handles GET requests."""
 
-        if not constants.ENABLE_NEW_STRUCTURE_PLAYERS:
-            raise self.PageNotFoundException
-
         self.render_template('topic-viewer-page.mainpage.html')
 
 
@@ -47,14 +42,12 @@ class TopicPageDataHandler(base.BaseHandler):
     """Manages the data that needs to be displayed to a learner on the topic
     viewer page.
     """
+
     GET_HANDLER_ERROR_RETURN_TYPE = feconf.HANDLER_TYPE_JSON
 
     @acl_decorators.can_access_topic_viewer_page
     def get(self, topic_name):
         """Handles GET requests."""
-
-        if not constants.ENABLE_NEW_STRUCTURE_PLAYERS:
-            raise self.PageNotFoundException
 
         topic = topic_fetchers.get_topic_by_name(topic_name)
         canonical_story_ids = topic.get_canonical_story_ids(
@@ -73,14 +66,24 @@ class TopicPageDataHandler(base.BaseHandler):
 
         canonical_story_dicts = []
         for story_summary in canonical_story_summaries:
+            completed_node_titles = [
+                completed_node.title for completed_node in
+                story_fetchers.get_completed_nodes_in_story(
+                    self.user_id, story_summary.id)]
             story_summary_dict = story_summary.to_human_readable_dict()
-            story_summary_dict['published'] = True
+            story_summary_dict['story_is_published'] = True
+            story_summary_dict['completed_node_titles'] = completed_node_titles
             canonical_story_dicts.append(story_summary_dict)
 
         additional_story_dicts = []
         for story_summary in additional_story_summaries:
+            completed_node_titles = [
+                completed_node.title for completed_node in
+                story_fetchers.get_completed_nodes_in_story(
+                    self.user_id, story_summary.id)]
             story_summary_dict = story_summary.to_human_readable_dict()
-            story_summary_dict['published'] = True
+            story_summary_dict['story_is_published'] = True
+            story_summary_dict['completed_node_titles'] = completed_node_titles
             additional_story_dicts.append(story_summary_dict)
 
         uncategorized_skill_ids = topic.get_all_uncategorized_skill_ids()
@@ -111,22 +114,16 @@ class TopicPageDataHandler(base.BaseHandler):
             for skill_id in all_skill_ids:
                 degrees_of_mastery[skill_id] = None
 
-        train_tab_should_be_displayed = False
-        if all_skill_ids:
-            questions = question_services.get_questions_by_skill_ids(
-                5, all_skill_ids, False)
-            if len(questions) == 5:
-                train_tab_should_be_displayed = True
-
         self.values.update({
             'topic_id': topic.id,
             'topic_name': topic.name,
+            'topic_description': topic.description,
             'canonical_story_dicts': canonical_story_dicts,
             'additional_story_dicts': additional_story_dicts,
             'uncategorized_skill_ids': uncategorized_skill_ids,
             'subtopics': subtopics,
             'degrees_of_mastery': degrees_of_mastery,
             'skill_descriptions': skill_descriptions,
-            'train_tab_should_be_displayed': train_tab_should_be_displayed
+            'practice_tab_is_displayed': topic.practice_tab_is_displayed
         })
         self.render_json(self.values)

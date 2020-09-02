@@ -16,11 +16,19 @@
  * @fileoverview Directive for the navbar of the collection editor.
  */
 
+import { Subscription } from 'rxjs';
+
 require(
   'components/forms/custom-forms-directives/select2-dropdown.directive.ts');
 require(
   'components/common-layout-directives/common-elements/' +
-  'loading-dots.directive.ts');
+  'loading-dots.component.ts');
+require(
+  'pages/collection-editor-page/templates/' +
+  'collection-editor-pre-publish-modal.controller.ts');
+require(
+  'pages/collection-editor-page/templates/' +
+  'collection-editor-save-modal.controller.ts');
 
 require('domain/collection/collection-rights-backend-api.service.ts');
 require('domain/collection/collection-update.service.ts');
@@ -50,17 +58,14 @@ angular.module('oppia').directive('collectionEditorNavbar', [
         'CollectionValidationService',
         'CollectionRightsBackendApiService',
         'EditableCollectionBackendApiService', 'UrlService',
-        'EVENT_COLLECTION_INITIALIZED', 'EVENT_COLLECTION_REINITIALIZED',
-        'EVENT_UNDO_REDO_SERVICE_CHANGE_APPLIED',
         function(
             $scope, $rootScope, $uibModal, AlertsService, RouterService,
             UndoRedoService, CollectionEditorStateService,
             CollectionValidationService,
             CollectionRightsBackendApiService,
-            EditableCollectionBackendApiService, UrlService,
-            EVENT_COLLECTION_INITIALIZED, EVENT_COLLECTION_REINITIALIZED,
-            EVENT_UNDO_REDO_SERVICE_CHANGE_APPLIED) {
+            EditableCollectionBackendApiService, UrlService) {
           var ctrl = this;
+          ctrl.directiveSubscriptions = new Subscription();
           var _validateCollection = function() {
             if (ctrl.collectionRights.isPrivate()) {
               ctrl.validationIssues = (
@@ -114,27 +119,16 @@ angular.module('oppia').directive('collectionEditorNavbar', [
 
           ctrl.saveChanges = function() {
             var isPrivate = ctrl.collectionRights.isPrivate();
-            var modalInstance = $uibModal.open({
+            $uibModal.open({
               templateUrl: UrlInterpolationService.getDirectiveTemplateUrl(
                 '/pages/collection-editor-page/templates/' +
                 'collection-editor-save-modal.directive.html'),
               backdrop: true,
-              controller: [
-                '$scope', '$uibModalInstance',
-                function($scope, $uibModalInstance) {
-                  $scope.isCollectionPrivate = isPrivate;
-
-                  $scope.save = function(commitMessage) {
-                    $uibModalInstance.close(commitMessage);
-                  };
-                  $scope.cancel = function() {
-                    $uibModalInstance.dismiss('cancel');
-                  };
-                }
-              ]
-            });
-
-            modalInstance.result.then(function(commitMessage) {
+              resolve: {
+                isPrivate: () => isPrivate
+              },
+              controller: 'CollectionEditorSaveModalController'
+            }).result.then(function(commitMessage) {
               CollectionEditorStateService.saveCollection(commitMessage);
             }, function() {
               // Note to developers:
@@ -151,85 +145,12 @@ angular.module('oppia').directive('collectionEditorNavbar', [
 
             if (additionalMetadataNeeded) {
               $uibModal.open({
-                bindToController: {},
                 templateUrl: UrlInterpolationService.getDirectiveTemplateUrl(
                   '/pages/collection-editor-page/templates/' +
                   'collection-editor-pre-publish-modal.directive.html'),
                 backdrop: true,
                 controllerAs: '$ctrl',
-                controller: [
-                  '$uibModalInstance', 'CollectionEditorStateService',
-                  'CollectionUpdateService', 'ALL_CATEGORIES',
-                  function(
-                      $uibModalInstance, CollectionEditorStateService,
-                      CollectionUpdateService, ALL_CATEGORIES) {
-                    var ctrl = this;
-                    var collection = (
-                      CollectionEditorStateService.getCollection());
-                    ctrl.requireTitleToBeSpecified = !collection.getTitle();
-                    ctrl.requireObjectiveToBeSpecified = (
-                      !collection.getObjective());
-                    ctrl.requireCategoryToBeSpecified = (
-                      !collection.getCategory());
-
-                    ctrl.newTitle = collection.getTitle();
-                    ctrl.newObjective = collection.getObjective();
-                    ctrl.newCategory = collection.getCategory();
-
-                    ctrl.CATEGORY_LIST_FOR_SELECT2 = [];
-                    for (var i = 0; i < ALL_CATEGORIES.length; i++) {
-                      ctrl.CATEGORY_LIST_FOR_SELECT2.push({
-                        id: ALL_CATEGORIES[i],
-                        text: ALL_CATEGORIES[i]
-                      });
-                    }
-
-                    ctrl.isSavingAllowed = function() {
-                      return Boolean(
-                        ctrl.newTitle && ctrl.newObjective &&
-                        ctrl.newCategory);
-                    };
-
-                    ctrl.save = function() {
-                      if (!ctrl.newTitle) {
-                        AlertsService.addWarning('Please specify a title');
-                        return;
-                      }
-                      if (!ctrl.newObjective) {
-                        AlertsService.addWarning('Please specify an objective');
-                        return;
-                      }
-                      if (!ctrl.newCategory) {
-                        AlertsService.addWarning('Please specify a category');
-                        return;
-                      }
-
-                      // Record any fields that have changed.
-                      var metadataList = [];
-                      if (ctrl.newTitle !== collection.getTitle()) {
-                        metadataList.push('title');
-                        CollectionUpdateService.setCollectionTitle(
-                          collection, ctrl.newTitle);
-                      }
-                      if (ctrl.newObjective !== collection.getObjective()) {
-                        metadataList.push('objective');
-                        CollectionUpdateService.setCollectionObjective(
-                          collection, ctrl.newObjective);
-                      }
-                      if (ctrl.newCategory !== collection.getCategory()) {
-                        metadataList.push('category');
-                        CollectionUpdateService.setCollectionCategory(
-                          collection, ctrl.newCategory);
-                      }
-
-                      $uibModalInstance.close(metadataList);
-                    };
-
-                    ctrl.cancel = function() {
-                      $uibModalInstance.dismiss('cancel');
-                    };
-                  }
-                ]
+                controller: 'CollectionEditorPrePublishModalController'
               }).result.then(function(metadataList) {
                 var commitMessage = (
                   'Add metadata: ' + metadataList.join(', ') + '.');
@@ -287,17 +208,25 @@ angular.module('oppia').directive('collectionEditorNavbar', [
             RouterService.navigateToHistoryTab();
           };
           ctrl.$onInit = function() {
-            $scope.$on(
-              EVENT_COLLECTION_INITIALIZED, _validateCollection);
-            $scope.$on(EVENT_COLLECTION_REINITIALIZED, _validateCollection);
-            $scope.$on(
-              EVENT_UNDO_REDO_SERVICE_CHANGE_APPLIED, _validateCollection);
+            ctrl.directiveSubscriptions.add(
+              CollectionEditorStateService.onCollectionInitialized.subscribe(
+                () => _validateCollection()
+              )
+            );
+            ctrl.directiveSubscriptions.add(
+              UndoRedoService.onUndoRedoChangeApplied().subscribe(
+                () => _validateCollection()
+              )
+            );
             ctrl.collectionId = UrlService.getCollectionIdFromEditorUrl();
             ctrl.collection = CollectionEditorStateService.getCollection();
             ctrl.collectionRights = (
               CollectionEditorStateService.getCollectionRights());
 
             ctrl.validationIssues = [];
+          };
+          ctrl.$onDestroy = function() {
+            ctrl.directiveSubscriptions.unsubscribe();
           };
         }
       ]

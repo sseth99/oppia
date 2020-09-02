@@ -101,8 +101,6 @@ describe('Assets Backend API Service', function() {
           exploration_id: '0',
           filename: 'myfile.png'
         });
-
-      window.BlobBuilder = undefined;
     }));
 
     afterEach(function() {
@@ -141,11 +139,13 @@ describe('Assets Backend API Service', function() {
 
       AssetsBackendApiService.loadAudio('0', 'myfile.mp3').then(
         successHandler, failHandler);
-      expect((AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested())
-        .audio.length).toBe(1);
+      expect(
+        (AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested())
+          .audio.length).toBe(1);
       $httpBackend.flush();
-      expect((AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested())
-        .audio.length).toBe(0);
+      expect(
+        (AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested())
+          .audio.length).toBe(0);
       expect(AssetsBackendApiService.isCached('myfile.mp3')).toBe(true);
       expect(successHandler).toHaveBeenCalled();
       expect(failHandler).not.toHaveBeenCalled();
@@ -194,87 +194,13 @@ describe('Assets Backend API Service', function() {
       $httpBackend.verifyNoOutstandingExpectation();
     });
 
-    it('should handler rejection on trying to process fetched file when' +
-      ' Blob throws a TypeError and BlobBuilder does not exist', function() {
-      var successHandler = jasmine.createSpy('success');
-      var failHandler = jasmine.createSpy('fail');
-
-      spyOn(window, 'Blob').and.callFake(function() {
-        throw new TypeError();
-      });
-
-      $httpBackend.expect('GET', audioRequestUrl).respond(201, 'Error');
-      expect(AssetsBackendApiService.isCached('myfile.mp3')).toBe(false);
-
-      AssetsBackendApiService.loadAudio('0', 'myfile.mp3').then(
-        successHandler, failHandler);
-      $httpBackend.flush();
-      expect(successHandler).not.toHaveBeenCalled();
-      expect(failHandler).toHaveBeenCalledWith('myfile.mp3');
-      $httpBackend.verifyNoOutstandingExpectation();
-    });
-
-    it('should handler rejection on trying to process fetched file when Blob' +
-      ' throws a TypeError and BlobBuilder does not work correctly',
-    function() {
-      var successHandler = jasmine.createSpy('success');
-      var failHandler = jasmine.createSpy('fail');
-
-      spyOn(window, 'Blob').and.callFake(function() {
-        throw new TypeError();
-      });
-
-      window.BlobBuilder = function BlobBuilder() {
-        this.blob = new Object({ blobBuilder: true });
-      };
-
-      $httpBackend.expect('GET', audioRequestUrl).respond(201, 'Error');
-      expect(AssetsBackendApiService.isCached('myfile.mp3')).toBe(false);
-
-      AssetsBackendApiService.loadAudio('0', 'myfile.mp3').then(
-        successHandler, failHandler);
-      $httpBackend.flush();
-      expect(successHandler).not.toHaveBeenCalled();
-      expect(failHandler).toHaveBeenCalledWith('myfile.mp3');
-      $httpBackend.verifyNoOutstandingExpectation();
-    });
-
-    it('should successfully process a fetch file when Blob throws a TypeError' +
-      ' and BlobBuilder is correctly implemented', function() {
-      var successHandler = jasmine.createSpy('success');
-      var failHandler = jasmine.createSpy('fail');
-
-      spyOn(window, 'Blob').and.callFake(function() {
-        throw new TypeError();
-      });
-
-      window.BlobBuilder = function BlobBuilder() {
-        this.blob = new Object({ blobBuilder: true });
-        this.append = function append(data) {};
-        this.getBlob = function getBlob(contentType) {
-          return this.blob;
-        };
-      };
-
-      $httpBackend.expect('GET', audioRequestUrl).respond(201, 'Error');
-      expect(AssetsBackendApiService.isCached('myfile.mp3')).toBe(false);
-
-      AssetsBackendApiService.loadAudio('0', 'myfile.mp3').then(
-        successHandler, failHandler);
-      $httpBackend.flush();
-      expect(successHandler).toHaveBeenCalledWith(
-        audioFileObjectFactory.createNew(
-          'myfile.mp3',
-          { blobBuilder: true }
-        ));
-      expect(failHandler).not.toHaveBeenCalled();
-      $httpBackend.verifyNoOutstandingExpectation();
-    });
-
     it('should successfully save an audio', function(done) {
       var successMessage = 'Audio was successfully saved.';
-      // @ts-ignore in order to ignore JQuery properties that should
-      // be declarated.
+      // This throws "Argument of type '() => Promise<any, any, any>' is not
+      // assignable to parameter of type '{ (url: string, ...):
+      // jqXHR<any>; ...}'.". We need to suppress this error because we need
+      // to mock $.ajax to this function for testing purposes.
+      // @ts-expect-error
       spyOn($, 'ajax').and.callFake(function() {
         var d = $.Deferred();
         d.resolve(successMessage);
@@ -291,15 +217,99 @@ describe('Assets Backend API Service', function() {
       $rootScope.$apply();
     });
 
-    it('should handle rejection when saving a file fails', function(done) {
-      var errorMessage = 'Error on saving audio';
-      // @ts-ignore in order to ignore JQuery properties that should
-      // be declarated.
+    it('should successfully save a math SVG', function(done) {
+      var successMessage = 'Math SVG was successfully saved.';
+      // This throws "Argument of type '() => Promise<any, any, any>' is not
+      // assignable to parameter of type '{ (url: string, ...):
+      // jqXHR<any>; ...}'.". We need to suppress this error because we need
+      // to mock $.ajax to this function for testing purposes.
+      // @ts-expect-error
+      spyOn($, 'ajax').and.callFake(function() {
+        var d = $.Deferred();
+        d.resolve(successMessage);
+        return d.promise();
+      });
+      var imageFile = new Blob();
+      AssetsBackendApiService.saveMathExpresionImage(
+        imageFile, 'newMathExpression.svg', 'exploration', 'expid12345')
+        .then(function(response) {
+          // Below checks assert that the correct data is sent to the backend.
+          var dataArguementForAjaxCall = (
+            // This throws "Property 'calls' does not exist on type
+            // '{ (url: string, ...): jqXHR<any>; ... }'." This is because
+            // $.ajax is not the actual $.ajax, it is the mocked to the function
+            // which has this property. We did this for testing purposes.
+            // @ts-expect-error
+            $.ajax.calls.mostRecent().args[0].data);
+          expect(dataArguementForAjaxCall instanceof FormData).toBeTruthy();
+          var rawImageSentToBackend = null;
+          var payLoadSentoBackend = null;
+          dataArguementForAjaxCall.forEach((value, key) => {
+            if (key === 'image') {
+              rawImageSentToBackend = value;
+            } else if (key === 'payload') {
+              payLoadSentoBackend = value;
+            }
+          });
+          expect(rawImageSentToBackend instanceof File).toBeTruthy();
+          expect(payLoadSentoBackend).toEqual(JSON.stringify({
+            filename: 'newMathExpression.svg',
+            filename_prefix: 'image'
+          }));
+          expect(response).toBe(successMessage);
+        }).then(done, done.fail);
+
+      // $q Promises need to be forcibly resolved through a JavaScript digest,
+      // which is what $apply helps kick-start.
+      $rootScope.$apply();
+    });
+
+    it('should handle rejection when saving a math SVG fails ', function(done) {
+      var errorMessage = 'Math SVG was not successfully saved.';
+      // This throws "Argument of type '() => Promise<any, any, any>' is not
+      // assignable to parameter of type '{ (url: string, ...):
+      // jqXHR<any>; ...}'.". We need to suppress this error because we need
+      // to mock $.ajax to this function for testing purposes.
+      // @ts-expect-error
       spyOn($, 'ajax').and.callFake(function() {
         var d = $.Deferred();
         d.reject({
-          // responseText contains a XSSI Prefix, which is represented by )]}'
-          // string. That's why double quotes is being used here. It's not
+          // The responseText contains a XSSI Prefix, which is represented by
+          // )]}' string. That's why double quotes is being used here. It's not
+          // possible to use \' instead of ' so the XSSI Prefix won't be
+          // evaluated correctly.
+          /* eslint-disable quotes */
+          responseText: ")]}'\n{ \"message\": \"" + errorMessage + "\" }"
+          /* eslint-enable quotes */
+        });
+        return d.promise();
+      });
+      var imageFile = new Blob();
+      AssetsBackendApiService.saveMathExpresionImage(
+        imageFile, 'new.svg', 'exploration', 'expid12345')
+        .then(done, function(response) {
+          expect(response).toEqual({
+            message: errorMessage
+          });
+          done();
+        });
+      // $q Promises need to be forcibly resolved through a JavaScript digest,
+      // which is what $apply helps kick-start.
+      $rootScope.$apply();
+    });
+
+    it('should handle rejection when saving a file fails', function(done) {
+      var errorMessage = 'Error on saving audio';
+      // This throws "Argument of type '() => Promise<any, any, any>' is not
+      // assignable to parameter of type '{ (url: string, ...):
+      // jqXHR<any>; ...}'.". We need to suppress this error because we need
+      // to mock $.ajax to this function for testing purposes.
+      // @ts-expect-error
+      spyOn($, 'ajax').and.callFake(function() {
+        var d = $.Deferred();
+        d.reject({
+          // The responseText contains a XSSI Prefix, which is represented by
+          // )]}' string. That's why double quotes is being used here. It's not
           // possible to use \' instead of ' so the XSSI Prefix won't be
           // evaluated correctly.
           /* eslint-disable quotes */
@@ -332,11 +342,13 @@ describe('Assets Backend API Service', function() {
       AssetsBackendApiService.loadImage(
         ENTITY_TYPE.EXPLORATION, '0', 'myfile.png').then(
         successHandler, failHandler);
-      expect((AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested())
-        .image.length).toBe(1);
+      expect(
+        (AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested())
+          .image.length).toBe(1);
       $httpBackend.flush();
-      expect((AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested())
-        .image.length).toBe(0);
+      expect(
+        (AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested())
+          .image.length).toBe(0);
       expect(AssetsBackendApiService.isCached('myfile.png')).toBe(true);
       expect(successHandler).toHaveBeenCalled();
       expect(failHandler).not.toHaveBeenCalled();
@@ -412,13 +424,15 @@ describe('Assets Backend API Service', function() {
         AssetsBackendApiService.loadAudio('0', 'myfile.mp3').then(
           successHandler, failHandler);
 
-        expect(AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested()
-          .audio.length).toBe(1);
+        expect(
+          AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested()
+            .audio.length).toBe(1);
 
         AssetsBackendApiService.abortAllCurrentAudioDownloads();
         $httpBackend.verifyNoOutstandingRequest();
-        expect(AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested()
-          .audio.length).toBe(0);
+        expect(
+          AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested()
+            .audio.length).toBe(0);
         expect(AssetsBackendApiService.isCached('myfile.mp3')).toBe(false);
       });
 
@@ -433,13 +447,15 @@ describe('Assets Backend API Service', function() {
           ENTITY_TYPE.EXPLORATION, '0', 'myfile.png').then(
           successHandler, failHandler);
 
-        expect(AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested()
-          .image.length).toBe(1);
+        expect(
+          AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested()
+            .image.length).toBe(1);
 
         AssetsBackendApiService.abortAllCurrentImageDownloads();
         $httpBackend.verifyNoOutstandingRequest();
-        expect(AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested()
-          .image.length).toBe(0);
+        expect(
+          AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested()
+            .image.length).toBe(0);
         expect(AssetsBackendApiService.isCached('myfile.png')).toBe(false);
       });
 
@@ -451,11 +467,13 @@ describe('Assets Backend API Service', function() {
         201, {type: 'audio/mpeg'});
       AssetsBackendApiService.loadAudio('0', 'myfile.mp3').then(
         successHandler, failHandler);
-      expect((AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested())
-        .audio.length).toBe(1);
+      expect(
+        (AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested())
+          .audio.length).toBe(1);
       $httpBackend.flush();
-      expect((AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested())
-        .audio.length).toBe(0);
+      expect(
+        (AssetsBackendApiService.getAssetsFilesCurrentlyBeingRequested())
+          .audio.length).toBe(0);
 
       expect(successHandler).toHaveBeenCalled();
       expect(failHandler).not.toHaveBeenCalled();
@@ -523,8 +541,8 @@ describe('Assets Backend API Service', function() {
       expect(
         AssetsBackendApiService.getAudioDownloadUrl(
           ENTITY_TYPE.EXPLORATION, 'expid12345', 'a.mp3')
-      ).toEqual(gcsPrefix +
-        '/exploration/expid12345/assets/audio/a.mp3');
+      ).toEqual(
+        gcsPrefix + '/exploration/expid12345/assets/audio/a.mp3');
     });
 
     it('should correctly formulate the preview URL for images', function() {
@@ -538,8 +556,8 @@ describe('Assets Backend API Service', function() {
       expect(
         AssetsBackendApiService.getThumbnailUrlForPreview(
           ENTITY_TYPE.EXPLORATION, 'expid12345', 'thumbnail.png')
-      ).toEqual(gcsPrefix +
-        '/exploration/expid12345/assets/thumbnail/thumbnail.png');
+      ).toEqual(
+        gcsPrefix + '/exploration/expid12345/assets/thumbnail/thumbnail.png');
     });
   });
 });

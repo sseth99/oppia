@@ -22,16 +22,26 @@ import { HttpClientTestingModule, HttpTestingController }
 import { TestBed, fakeAsync, flushMicrotasks } from '@angular/core/testing';
 
 import { CsrfTokenService } from 'services/csrf-token.service';
-import { TopicCreationBackendApiService, ITopicCreationBackend } from
+import { ImageData } from 'domain/skill/skill-creation-backend-api.service';
+import { NewlyCreatedTopic, NewlyCreatedTopicObjectFactory } from
+  'domain/topics_and_skills_dashboard/NewlyCreatedTopicObjectFactory';
+import { TopicCreationBackendApiService } from
   'domain/topic/topic-creation-backend-api.service.ts';
 
 describe('Topic creation backend api service', () => {
   let csrfService: CsrfTokenService = null;
   let httpTestingController: HttpTestingController = null;
   let topicCreationBackendApiService: TopicCreationBackendApiService = null;
-  let postData: ITopicCreationBackend = {
-    abbreviated_name: 'topic-abbr-name',
-    name: 'topic-name'
+  let newlyCreatedTopicObjectFactory: NewlyCreatedTopicObjectFactory = null;
+  let topic: NewlyCreatedTopic = null;
+  let imagesData: ImageData[] = null;
+  const thumbnailBgColor = '#e3e3e3';
+  let postData = {
+    name: 'topic-name',
+    description: 'Description',
+    thumbnailBgColor: thumbnailBgColor,
+    filename: 'image.svg',
+    url_fragment: 'url-fragment'
   };
 
   beforeEach(() => {
@@ -42,8 +52,26 @@ describe('Topic creation backend api service', () => {
 
     csrfService = TestBed.get(CsrfTokenService);
     httpTestingController = TestBed.get(HttpTestingController);
+    newlyCreatedTopicObjectFactory = TestBed.get(
+      NewlyCreatedTopicObjectFactory);
     topicCreationBackendApiService = TestBed.get(
       TopicCreationBackendApiService);
+    topic = newlyCreatedTopicObjectFactory.createDefault();
+    topic.name = 'topic-name';
+    topic.description = 'Description';
+    topic.urlFragment = 'url-fragment';
+    let imageBlob = new Blob(
+      ['data:image/png;base64,xyz']);
+    imagesData = [{
+      filename: 'image.svg',
+      imageBlob: imageBlob
+    }];
+
+    // This throws "Argument of type '() -> Promise<unknown>'
+    // is not assignable to parameter of type 'PromiseLike<string>'.".
+    // We need to suppress this error because we need to mock the
+    // `getTokenAsync` function for testing purposes.
+    // @ts-expect-error
     spyOn(csrfService, 'getTokenAsync').and.returnValue(() => {
       return new Promise((resolve) => {
         resolve('sample-csrf-token');
@@ -60,12 +88,17 @@ describe('Topic creation backend api service', () => {
       let successHandler = jasmine.createSpy('success');
       let failHandler = jasmine.createSpy('fail');
       topicCreationBackendApiService.createTopic(
-        'topic-name', 'topic-abbr-name').then(
+        topic, imagesData, thumbnailBgColor).then(
         successHandler);
       let req = httpTestingController.expectOne(
         '/topic_editor_handler/create_new');
       expect(req.request.method).toEqual('POST');
-      expect(req.request.body).toEqual(postData);
+
+      expect(req.request.body.get('payload')).toEqual(JSON.stringify(postData));
+      let sampleFormData = new FormData();
+      sampleFormData.append('image', imagesData[0].imageBlob);
+      expect(
+        req.request.body.get('image')).toEqual(sampleFormData.get('image'));
       req.flush(postData);
       flushMicrotasks();
       expect(successHandler).toHaveBeenCalled();
@@ -77,7 +110,7 @@ describe('Topic creation backend api service', () => {
       let successHandler = jasmine.createSpy('success');
       let failHandler = jasmine.createSpy('fail');
       topicCreationBackendApiService.createTopic(
-        'topic-name', 'topic-abbr-name').then(
+        topic, imagesData, thumbnailBgColor).then(
         successHandler, failHandler);
       const errorResponse = new HttpErrorResponse({
         error: 'test 404 error',
@@ -88,7 +121,11 @@ describe('Topic creation backend api service', () => {
         '/topic_editor_handler/create_new');
       req.error(new ErrorEvent('Error'), errorResponse);
       expect(req.request.method).toEqual('POST');
-      expect(req.request.body).toEqual(postData);
+      expect(req.request.body.get('payload')).toEqual(JSON.stringify(postData));
+      let sampleFormData = new FormData();
+      sampleFormData.append('image', imagesData[0].imageBlob);
+      expect(
+        req.request.body.get('image')).toEqual(sampleFormData.get('image'));
       flushMicrotasks();
       expect(failHandler).toHaveBeenCalled();
       expect(successHandler).not.toHaveBeenCalled();

@@ -22,22 +22,47 @@ import { downgradeInjectable } from '@angular/upgrade/static';
 import { UtilsService } from 'services/utils.service';
 import isEqual from 'lodash/isEqual';
 
+import { Outcome } from
+  'domain/exploration/OutcomeObjectFactory';
+import { SubtitledHtml } from
+  'domain/exploration/SubtitledHtmlObjectFactory';
+
+interface LostChangeValues {
+  'outcome'?: Outcome;
+  'dest'?: string;
+  'feedback'?: SubtitledHtml;
+  'rules'?: Object;
+  'html'?: string;
+}
+
+type LostChangeValue = string | string[] | LostChangeValues;
+
+// Properties are optional in 'LostChangeBackendDict' because all of them may
+// not be present in the dict and may change according to the cmd.
+interface LostChangeBackendDict {
+  'cmd': string;
+  'new_state_name'?: string;
+  'old_state_name'?: string;
+  'state_name'?: string;
+  'new_value'?: LostChangeValue;
+  'old_value'?: LostChangeValue;
+  'property_name'?: string;
+}
+
 export class LostChange {
   cmd: string;
   stateName: string;
   newStateName: string;
   oldStateName: string;
-  // TODO(#7176): Replace 'any' with the exact type.
-  newValue: any;
-  oldValue: any;
+  newValue: LostChangeValue;
+  oldValue: LostChangeValue;
   propertyName: string;
   utilsService: UtilsService;
 
-  // TODO(#7176): Replace 'any' with the exact type.
   constructor(
       utilsService: UtilsService, cmd: string, newStateName: string,
-      oldStateName: string, stateName: string, newValue: any, oldValue: any,
-      propertyName: string) {
+      oldStateName: string, stateName: string, newValue: LostChangeValue,
+      oldValue: LostChangeValue, propertyName: string) {
     this.utilsService = utilsService;
     this.cmd = cmd;
     this.newStateName = newStateName;
@@ -51,17 +76,17 @@ export class LostChange {
   // An edit is represented either as an object or an array. If it's an
   // object, then simply return that object. In case of an array, return
   // the last item.
-  // TODO(#7176): Replace 'any' with the exact type.
-  getStatePropertyValue(statePropertyValue: Array<string> | Object): any {
+  getStatePropertyValue(
+      statePropertyValue: string[] | Object): string | Object {
     return Array.isArray(statePropertyValue) ?
       statePropertyValue[statePropertyValue.length - 1] : statePropertyValue;
   }
 
-  isEndingExploration() {
+  isEndingExploration(): boolean {
     return this.oldValue === null && this.newValue === 'EndExploration';
   }
 
-  isAddingInteraction() {
+  isAddingInteraction(): boolean {
     return this.oldValue === null && this.newValue !== 'EndExploration';
   }
 
@@ -73,39 +98,47 @@ export class LostChange {
     return this.utilsService.isEmpty(this.newValue);
   }
 
-  isOutcomeFeedbackEqual() {
-    if (this.newValue.outcome && this.newValue.outcome.feedback &&
-      this.oldValue.outcome && this.oldValue.outcome.feedback) {
+  isOutcomeFeedbackEqual(): boolean {
+    if ((<LostChangeValues> this.newValue).outcome &&
+      (<LostChangeValues> this.newValue).outcome.feedback &&
+      (<LostChangeValues> this.oldValue).outcome &&
+      (<LostChangeValues> this.oldValue).outcome.feedback) {
       return (
-        this.newValue.outcome.feedback.getHtml() ===
-        this.oldValue.outcome.feedback.getHtml());
+        (<LostChangeValues> this.newValue).outcome.feedback.getHtml() ===
+        (<LostChangeValues> this.oldValue).outcome.feedback.getHtml());
     }
     return false;
   }
 
-  isOutcomeDestEqual() {
-    if (this.newValue.outcome && this.oldValue.outcome) {
+  isOutcomeDestEqual(): boolean {
+    if ((<LostChangeValues> this.newValue).outcome &&
+      (<LostChangeValues> this.oldValue).outcome) {
       return (
-        this.oldValue.outcome.dest === this.newValue.outcome.dest);
+        (<LostChangeValues> this.oldValue).outcome.dest ===
+        (<LostChangeValues> this.newValue).outcome.dest);
     }
     return false;
   }
 
-  isDestEqual() {
-    return this.oldValue.dest === this.newValue.dest;
+  isDestEqual(): boolean {
+    return (<LostChangeValues> this.oldValue).dest ===
+      (<LostChangeValues> this.newValue).dest;
   }
 
-  isFeedbackEqual() {
-    if (this.newValue.feedback && this.oldValue.feedback) {
+  isFeedbackEqual(): boolean {
+    if ((<LostChangeValues> this.newValue).feedback &&
+    (<LostChangeValues> this.oldValue).feedback) {
       return (
-        this.newValue.feedback.getHtml() ===
-        this.oldValue.feedback.getHtml());
+        (<LostChangeValues> this.newValue).feedback.getHtml() ===
+        (<LostChangeValues> this.oldValue).feedback.getHtml());
     }
     return false;
   }
 
-  isRulesEqual() {
-    return isEqual(this.newValue.rules, this.oldValue.rules);
+  isRulesEqual(): boolean {
+    return isEqual(
+      (<LostChangeValues> this.newValue).rules,
+      (<LostChangeValues> this.oldValue).rules);
   }
 
   // Detects whether an object of the type 'answer_group' or
@@ -141,13 +174,18 @@ export class LostChange {
   providedIn: 'root'
 })
 export class LostChangeObjectFactory {
-  constructor(private utilsService: UtilsService) {}
+  constructor(private utilsService: UtilsService) {
+    // The createNew function needs to be binded because it's used a lot in
+    // calbacks and then `this` would refer to window instead of the service
+    // itself.
+    this.createNew = this.createNew.bind(this);
+  }
 
   /**
    * @param {String} lostChangeDict - the name of the type to fetch.
    * @returns {LostChange} - The associated type, if any.
    */
-  createNew(lostChangeDict) {
+  createNew(lostChangeDict: LostChangeBackendDict): LostChange {
     return new LostChange(
       this.utilsService,
       lostChangeDict.cmd,

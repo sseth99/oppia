@@ -25,6 +25,7 @@ require('services/alerts.service.ts');
 require('services/assets-backend-api.service.ts');
 require('services/context.service.ts');
 require('services/csrf-token.service.ts');
+require('services/image-local-storage.service.ts');
 require('services/image-upload-helper.service.ts');
 
 var gifFrames = require('gif-frames');
@@ -32,11 +33,14 @@ var gifshot = require('gifshot');
 
 angular.module('oppia').directive('filepathEditor', [
   '$sce', 'AlertsService', 'AssetsBackendApiService', 'ContextService',
-  'CsrfTokenService', 'ImagePreloaderService', 'ImageUploadHelperService',
-  'UrlInterpolationService',
-  function($sce, AlertsService, AssetsBackendApiService, ContextService,
-      CsrfTokenService, ImagePreloaderService, ImageUploadHelperService,
-      UrlInterpolationService) {
+  'CsrfTokenService', 'ImageLocalStorageService', 'ImagePreloaderService',
+  'ImageUploadHelperService', 'UrlInterpolationService',
+  'ALLOWED_IMAGE_FORMATS', 'IMAGE_SAVE_DESTINATION_LOCAL_STORAGE',
+  function(
+      $sce, AlertsService, AssetsBackendApiService, ContextService,
+      CsrfTokenService, ImageLocalStorageService, ImagePreloaderService,
+      ImageUploadHelperService, UrlInterpolationService,
+      ALLOWED_IMAGE_FORMATS, IMAGE_SAVE_DESTINATION_LOCAL_STORAGE) {
     return {
       restrict: 'E',
       scope: {},
@@ -88,6 +92,7 @@ angular.module('oppia').directive('filepathEditor', [
         CROP_CURSORS[MOUSE_LEFT] = 'ew-resize';
         CROP_CURSORS[MOUSE_INSIDE] = 'move';
         ctrl.imageContainerStyle = {};
+        ctrl.allowedImageFormats = ALLOWED_IMAGE_FORMATS;
 
         /** Internal functions (not visible in the view) */
 
@@ -156,7 +161,7 @@ angular.module('oppia').directive('filepathEditor', [
             img.src = imageDataURI;
             img.addEventListener('load', () => {
               // If the image loads,
-              // fulfill the promise with the cropped dataURL
+              // fulfill the promise with the cropped dataURL.
               var canvas = document.createElement('canvas');
               canvas.width = x + width;
               canvas.height = y + height;
@@ -346,6 +351,13 @@ angular.module('oppia').directive('filepathEditor', [
         };
 
         var getTrustedResourceUrlForImageFileName = function(imageFileName) {
+          if (
+            ContextService.getImageSaveDestination() ===
+            IMAGE_SAVE_DESTINATION_LOCAL_STORAGE) {
+            var imageUrl = ImageLocalStorageService.getObjectUrlForImage(
+              imageFileName);
+            return $sce.trustAsResourceUrl(imageUrl);
+          }
           var encodedFilepath = window.encodeURIComponent(imageFileName);
           return $sce.trustAsResourceUrl(
             AssetsBackendApiService.getImageUrlForPreview(
@@ -353,6 +365,13 @@ angular.module('oppia').directive('filepathEditor', [
         };
 
         ctrl.resetFilePathEditor = function() {
+          if (
+            ctrl.data.metadata.savedImageFilename &&
+            ContextService.getImageSaveDestination() ===
+            IMAGE_SAVE_DESTINATION_LOCAL_STORAGE) {
+            ImageLocalStorageService.deleteImage(
+              ctrl.data.metadata.savedImageFilename);
+          }
           ctrl.data = {
             mode: MODE_EMPTY,
             metadata: {},
@@ -504,9 +523,9 @@ angular.module('oppia').directive('filepathEditor', [
           let newImageFile;
 
           if (mimeType === 'data:image/gif') {
-            // looping through individual gif frames can take a while
+            // Looping through individual gif frames can take a while
             // especially if there are a lot. Changing the cursor will let the
-            // user know that something is happening
+            // user know that something is happening.
             document.body.style.cursor = 'wait';
             gifFrames({
               url: imageDataURI,
@@ -699,15 +718,15 @@ angular.module('oppia').directive('filepathEditor', [
           var dimensions = ctrl.calculateTargetImageDimensions();
 
 
-          // Check mime type from imageDataURI
+          // Check mime type from imageDataURI.
           const imageDataURI = ctrl.data.metadata.uploadedImageData;
           const mimeType = imageDataURI.split(';')[0];
           let resampledFile;
 
           if (mimeType === 'data:image/gif') {
-            // looping through individual gif frames can take a while
+            // Looping through individual gif frames can take a while
             // especially if there are a lot. Changing the cursor will let the
-            // user know that something is happening
+            // user know that something is happening.
             document.body.style.cursor = 'wait';
             gifFrames({
               url: imageDataURI,
@@ -734,7 +753,7 @@ angular.module('oppia').directive('filepathEditor', [
                     AlertsService.addWarning('Could not get resampled file.');
                     return;
                   }
-                  ctrl.postImageToServer(dimensions, resampledFile, 'gif');
+                  ctrl.saveImage(dimensions, resampledFile, 'gif');
                   document.body.style.cursor = 'default';
                 }
               });
@@ -749,7 +768,7 @@ angular.module('oppia').directive('filepathEditor', [
               resampledFile = (
                 ImageUploadHelperService.convertImageDataToImageFile(
                   imageDataURI));
-              ctrl.postImageToServer(dimensions, resampledFile, 'svg');
+              ctrl.saveImage(dimensions, resampledFile, 'svg');
               ctrl.data.crop = false;
             }
           } else {
@@ -762,12 +781,47 @@ angular.module('oppia').directive('filepathEditor', [
               AlertsService.addWarning('Could not get resampled file.');
               return;
             }
-            ctrl.postImageToServer(dimensions, resampledFile);
+            ctrl.saveImage(dimensions, resampledFile, 'png');
           }
         };
 
-        ctrl.postImageToServer = function(dimensions, resampledFile,
-            imageType = 'png') {
+        ctrl.saveImageToLocalStorage = function(
+            dimensions, resampledFile, imageType) {
+          var filename = ImageUploadHelperService.generateImageFilename(
+            dimensions.height, dimensions.width, imageType);
+          var reader = new FileReader();
+          reader.onload = function() {
+            var imageData = reader.result;
+            ImageLocalStorageService.saveImage(filename, imageData);
+            var img = new Image();
+            img.onload = function() {
+              ctrl.setSavedImageFilename(filename, true);
+              var dimensions = (
+                ImagePreloaderService.getDimensionsOfImage(filename));
+              ctrl.imageContainerStyle = {
+                height: dimensions.height + 'px',
+                width: dimensions.width + 'px'
+              };
+              $scope.$apply();
+            };
+            img.src = getTrustedResourceUrlForImageFileName(filename);
+          };
+          reader.readAsDataURL(resampledFile);
+        };
+
+        ctrl.saveImage = function(
+            dimensions, resampledFile, imageType) {
+          if (
+            ContextService.getImageSaveDestination() ===
+            IMAGE_SAVE_DESTINATION_LOCAL_STORAGE) {
+            ctrl.saveImageToLocalStorage(dimensions, resampledFile, imageType);
+          } else {
+            ctrl.postImageToServer(dimensions, resampledFile, imageType);
+          }
+        };
+
+        ctrl.postImageToServer = function(
+            dimensions, resampledFile, imageType = 'png') {
           let form = new FormData();
           form.append('image', resampledFile);
           form.append('payload', JSON.stringify({
@@ -864,7 +918,7 @@ angular.module('oppia').directive('filepathEditor', [
           //     {
           //       savedImageFilename: <File name of the resource for the image>
           //       savedImageUrl: <Trusted resource Url for the image>
-          //     }
+          //     }.
           ctrl.data = { mode: MODE_EMPTY, metadata: {}, crop: true };
 
           // Resizing properties.
@@ -885,7 +939,6 @@ angular.module('oppia').directive('filepathEditor', [
 
           ctrl.entityId = ContextService.getEntityId();
           ctrl.entityType = ContextService.getEntityType();
-          ctrl.resetFilePathEditor();
 
           window.addEventListener('mouseup', function(e) {
             e.preventDefault();

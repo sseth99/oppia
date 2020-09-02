@@ -15,19 +15,24 @@
 /**
  * @fileoverview Directive for the navbar of the story editor.
  */
-
 require(
   'components/common-layout-directives/common-elements/' +
-  'loading-dots.directive.ts');
+  'confirm-or-cancel-modal.controller.ts');
+require(
+  'components/common-layout-directives/common-elements/' +
+  'loading-dots.component.ts');
 require('domain/editor/undo_redo/base-undo-redo.service.ts');
 require('domain/editor/undo_redo/undo-redo.service.ts');
 require('domain/story/editable-story-backend-api.service.ts');
 require('domain/utilities/url-interpolation.service.ts');
 require('pages/story-editor-page/services/story-editor-state.service.ts');
+require('pages/story-editor-page/services/story-editor-navigation.service.ts');
 require('services/alerts.service.ts');
 require('services/contextual/url.service.ts');
 
 require('pages/story-editor-page/story-editor-page.constants.ajs.ts');
+
+import { Subscription } from 'rxjs';
 
 angular.module('oppia').directive('storyEditorNavbar', [
   'UrlInterpolationService', function(UrlInterpolationService) {
@@ -38,16 +43,15 @@ angular.module('oppia').directive('storyEditorNavbar', [
       controller: [
         '$scope', '$rootScope', '$uibModal', 'AlertsService',
         'EditableStoryBackendApiService', 'UndoRedoService',
-        'StoryEditorStateService', 'UrlService',
-        'EVENT_STORY_INITIALIZED', 'EVENT_STORY_REINITIALIZED',
-        'EVENT_UNDO_REDO_SERVICE_CHANGE_APPLIED',
+        'StoryEditorStateService', 'StoryEditorNavigationService', 'UrlService',
         function(
             $scope, $rootScope, $uibModal, AlertsService,
             EditableStoryBackendApiService, UndoRedoService,
-            StoryEditorStateService, UrlService,
-            EVENT_STORY_INITIALIZED, EVENT_STORY_REINITIALIZED,
-            EVENT_UNDO_REDO_SERVICE_CHANGE_APPLIED) {
+            StoryEditorStateService, StoryEditorNavigationService, UrlService) {
           var ctrl = this;
+          var EDITOR = 'Editor';
+          var PREVIEW = 'Preview';
+          ctrl.directiveSubscriptions = new Subscription();
           $scope.explorationValidationIssues = [];
 
           $scope.getChangeListLength = function() {
@@ -78,13 +82,17 @@ angular.module('oppia').directive('storyEditorNavbar', [
 
           $scope.discardChanges = function() {
             UndoRedoService.clearChanges();
-            $scope.validationIssues = [];
-            $scope.explorationValidationIssues = [];
             StoryEditorStateService.loadStory($scope.story.getId());
+            _validateStory();
+            $scope.forceValidateExplorations = true;
           };
 
           var _validateStory = function() {
             $scope.validationIssues = $scope.story.validate();
+            if (StoryEditorStateService.getStoryWithUrlFragmentExists()) {
+              $scope.validationIssues.push(
+                'Story URL fragment already exists.');
+            }
             _validateExplorations();
             var nodes = $scope.story.getStoryContents().getNodes();
             var storyPrepublishValidationIssues = (
@@ -127,25 +135,13 @@ angular.module('oppia').directive('storyEditorNavbar', [
           };
 
           $scope.saveChanges = function() {
-            var modalInstance = $uibModal.open({
+            $uibModal.open({
               templateUrl: UrlInterpolationService.getDirectiveTemplateUrl(
                 '/pages/story-editor-page/modal-templates/' +
                 'story-editor-save-modal.template.html'),
               backdrop: true,
-              controller: [
-                '$scope', '$uibModalInstance',
-                function($scope, $uibModalInstance) {
-                  $scope.save = function(commitMessage) {
-                    $uibModalInstance.close(commitMessage);
-                  };
-                  $scope.cancel = function() {
-                    $uibModalInstance.dismiss('cancel');
-                  };
-                }
-              ]
-            });
-
-            modalInstance.result.then(function(commitMessage) {
+              controller: 'ConfirmOrCancelModalController'
+            }).result.then(function(commitMessage) {
               StoryEditorStateService.saveStory(commitMessage);
             }, function() {
               // Note to developers:
@@ -172,17 +168,58 @@ angular.module('oppia').directive('storyEditorNavbar', [
               });
           };
 
+          $scope.toggleWarningText = function() {
+            $scope.warningsAreShown = !$scope.warningsAreShown;
+          };
+
+          $scope.toggleNavigationOptions = function() {
+            $scope.showNavigationOptions = !$scope.showNavigationOptions;
+          };
+
+          $scope.toggleStoryEditOptions = function() {
+            $scope.showStoryEditOptions = !$scope.showStoryEditOptions;
+          };
+
+          $scope.selectMainTab = function() {
+            $scope.activeTab = EDITOR;
+            StoryEditorNavigationService.navigateToStoryEditor();
+            $scope.showNavigationOptions = false;
+          };
+
+          $scope.selectPreviewTab = function() {
+            $scope.activeTab = PREVIEW;
+            StoryEditorNavigationService.navigateToStoryPreviewTab();
+            $scope.showNavigationOptions = false;
+          };
+
           ctrl.$onInit = function() {
+            ctrl.directiveSubscriptions.add(
+              StoryEditorStateService.onStoryInitialized.subscribe(
+                () => _validateStory()
+              ));
+            ctrl.directiveSubscriptions.add(
+              StoryEditorStateService.onStoryReinitialized.subscribe(
+                () => _validateStory()
+              ));
             $scope.forceValidateExplorations = true;
+            $scope.warningsAreShown = false;
+            $scope.activeTab = EDITOR;
+            $scope.showNavigationOptions = false;
+            $scope.showStoryEditOptions = false;
             $scope.story = StoryEditorStateService.getStory();
             $scope.isStoryPublished = StoryEditorStateService.isStoryPublished;
             $scope.isSaveInProgress = StoryEditorStateService.isSavingStory;
             $scope.validationIssues = [];
             $scope.prepublishValidationIssues = [];
-            $scope.$on(EVENT_STORY_INITIALIZED, _validateStory);
-            $scope.$on(EVENT_STORY_REINITIALIZED, _validateStory);
-            $scope.$on(
-              EVENT_UNDO_REDO_SERVICE_CHANGE_APPLIED, _validateStory);
+            ctrl.directiveSubscriptions.add(
+              UndoRedoService.onUndoRedoChangeApplied().subscribe(
+                () => _validateStory()
+              )
+            );
+          };
+
+          ctrl.$onDestroy = function() {
+            ctrl.directiveSubscriptions.unsubscribe();
           };
         }
       ]

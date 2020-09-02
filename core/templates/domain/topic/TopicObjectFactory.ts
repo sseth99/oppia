@@ -22,12 +22,40 @@ import { Injectable } from '@angular/core';
 
 import cloneDeep from 'lodash/cloneDeep';
 
-import { SkillSummary, SkillSummaryObjectFactory } from
-  'domain/skill/SkillSummaryObjectFactory';
-import { StoryReference, StoryReferenceObjectFactory } from
-  'domain/topic/StoryReferenceObjectFactory';
-import { Subtopic, SubtopicObjectFactory } from
-  'domain/topic/SubtopicObjectFactory';
+import { ShortSkillSummary, ShortSkillSummaryObjectFactory } from
+  'domain/skill/ShortSkillSummaryObjectFactory';
+import {
+  StoryReferenceBackendDict,
+  StoryReference,
+  StoryReferenceObjectFactory
+} from 'domain/topic/StoryReferenceObjectFactory';
+import {
+  SkillIdToDescriptionMap,
+  Subtopic,
+  SubtopicBackendDict,
+  SubtopicObjectFactory
+} from 'domain/topic/SubtopicObjectFactory';
+
+interface TopicBackendDict {
+  'id': string;
+  'name': string;
+  'abbreviated_name': string;
+  'description': string;
+  'language_code': string;
+  'uncategorized_skill_ids': string[];
+  'next_subtopic_id': number;
+  'version': number;
+  'thumbnail_filename': string;
+  'thumbnail_bg_color': string;
+  'subtopics': SubtopicBackendDict[];
+  'canonical_story_references': StoryReferenceBackendDict[];
+  'additional_story_references': StoryReferenceBackendDict[];
+  'url_fragment': string;
+  'practice_tab_is_displayed': boolean;
+  'meta_tag_content': string;
+}
+
+const constants = require('constants.ts');
 
 export class Topic {
   _id: string;
@@ -35,33 +63,39 @@ export class Topic {
   _abbreviatedName: string;
   _description: string;
   _languageCode: string;
-  _canonicalStoryReferences: Array<StoryReference>;
-  _additionalStoryReferences: Array<StoryReference>;
-  _uncategorizedSkillSummaries: Array<SkillSummary>;
+  _canonicalStoryReferences: StoryReference[];
+  _additionalStoryReferences: StoryReference[];
+  _uncategorizedSkillSummaries: ShortSkillSummary[];
   _nextSubtopicId: number;
   _version: number;
-  _subtopics: Array<Subtopic>;
+  _subtopics: Subtopic[];
   _thumbnailFilename: string;
   _thumbnailBgColor: string;
-  skillSummaryObjectFactory: SkillSummaryObjectFactory;
+  _urlFragment: string;
+  _practiceTabIsDisplayed: boolean;
+  _metaTagContent: string;
+  skillSummaryObjectFactory: ShortSkillSummaryObjectFactory;
   subtopicObjectFactory: SubtopicObjectFactory;
   storyReferenceObjectFactory: StoryReferenceObjectFactory;
   constructor(
-      id: string, name: string, abbreviatedName: string, description: string,
-      languageCode: string, canonicalStoryReferences: Array<StoryReference>,
-      additionalStoryReferences: Array<StoryReference>,
-      uncategorizedSkillIds: Array<string>,
-      nextSubtopicId: number, version: number, subtopics: Array<Subtopic>,
+      id: string, name: string, abbreviatedName: string, urlFragment: string,
+      description: string, languageCode: string,
+      canonicalStoryReferences: StoryReference[],
+      additionalStoryReferences: StoryReference[],
+      uncategorizedSkillIds: string[],
+      nextSubtopicId: number, version: number, subtopics: Subtopic[],
       thumbnailFilename: string,
       thumbnailBgColor: string,
-      // TODO(#7165): Replace any with exact type.
-      skillIdToDescriptionMap: any,
-      skillSummaryObjectFactory: SkillSummaryObjectFactory,
+      skillIdToDescriptionMap: SkillIdToDescriptionMap,
+      skillSummaryObjectFactory: ShortSkillSummaryObjectFactory,
       subtopicObjectFactory: SubtopicObjectFactory,
-      storyReferenceObjectFactory: StoryReferenceObjectFactory) {
+      storyReferenceObjectFactory: StoryReferenceObjectFactory,
+      practiceTabIsDisplayed: boolean,
+      metaTagContent: string) {
     this._id = id;
     this._name = name;
     this._abbreviatedName = abbreviatedName;
+    this._urlFragment = urlFragment;
     this._description = description;
     this._languageCode = languageCode;
     this._canonicalStoryReferences = canonicalStoryReferences;
@@ -79,9 +113,11 @@ export class Topic {
     this._thumbnailBgColor = thumbnailBgColor;
     this.subtopicObjectFactory = subtopicObjectFactory;
     this.storyReferenceObjectFactory = storyReferenceObjectFactory;
+    this._practiceTabIsDisplayed = practiceTabIsDisplayed;
+    this._metaTagContent = metaTagContent;
   }
 
-  // Instance methods
+  // ---- Instance methods ----
   getId(): string {
     return this._id;
   }
@@ -100,6 +136,30 @@ export class Topic {
 
   setAbbreviatedName(abbreviatedName: string): void {
     this._abbreviatedName = abbreviatedName;
+  }
+
+  getPracticeTabIsDisplayed(): boolean {
+    return this._practiceTabIsDisplayed;
+  }
+
+  setPracticeTabIsDisplayed(practiceTabIsDisplayed: boolean): void {
+    this._practiceTabIsDisplayed = practiceTabIsDisplayed;
+  }
+
+  getMetaTagContent(): string {
+    return this._metaTagContent;
+  }
+
+  setMetaTagContent(metaTagContent: string): void {
+    this._metaTagContent = metaTagContent;
+  }
+
+  getUrlFragment(): string {
+    return this._urlFragment;
+  }
+
+  setUrlFragment(urlFragment: string): void {
+    this._urlFragment = urlFragment;
   }
 
   setThumbnailFilename(thumbnailFilename: string): void {
@@ -142,10 +202,20 @@ export class Topic {
     return this._version;
   }
 
-  validate(): Array<string> {
+  validate(): string[] {
+    let validUrlFragmentRegex = new RegExp(constants.VALID_URL_FRAGMENT_REGEX);
+    let topicUrlFragmentCharLimit = constants.MAX_CHARS_IN_TOPIC_URL_FRAGMENT;
     let issues = [];
     if (this._name === '') {
       issues.push('Topic name should not be empty.');
+    }
+    if (!validUrlFragmentRegex.test(this._urlFragment)) {
+      issues.push('Topic url fragment is not valid.');
+    }
+    if (this._urlFragment.length > topicUrlFragmentCharLimit) {
+      issues.push(
+        'Topic url fragment should not be longer than ' +
+        `${topicUrlFragmentCharLimit} characters.`);
     }
 
     let subtopics = this._subtopics;
@@ -178,7 +248,8 @@ export class Topic {
       }
     }
     let topicSkillIds = cloneDeep(
-      this._uncategorizedSkillSummaries.map((skillSummary: SkillSummary) =>{
+      this._uncategorizedSkillSummaries.map((
+          skillSummary: ShortSkillSummary) => {
         return skillSummary.getId();
       }));
     for (let i = 0; i < subtopics.length; i++) {
@@ -201,7 +272,8 @@ export class Topic {
     return issues;
   }
 
-  prepublishValidate(): Array<string> {
+  prepublishValidate(): string[] {
+    const metaTagContentCharLimit = constants.MAX_CHARS_IN_META_TAG_CONTENT;
     let issues = [];
     if (!this._thumbnailFilename) {
       issues.push('Topic should have a thumbnail.');
@@ -213,19 +285,31 @@ export class Topic {
           ' does not have any skill IDs linked.');
       }
     }
+    if (!this._metaTagContent) {
+      issues.push('Topic should have meta tag content.');
+    } else if (this._metaTagContent.length > metaTagContentCharLimit) {
+      issues.push(
+        'Topic meta tag content should not be longer than ' +
+        `${metaTagContentCharLimit} characters.`);
+    }
+    if (!this._subtopics.length) {
+      issues.push('Topic should have at least 1 subtopic.');
+    }
     return issues;
   }
 
-  getSkillIds(): Array<string> {
+  getSkillIds(): string[] {
     let topicSkillIds = cloneDeep(
-      this._uncategorizedSkillSummaries.map((skillSummary: SkillSummary) => {
+      this._uncategorizedSkillSummaries.map((
+          skillSummary: ShortSkillSummary) => {
         return skillSummary.getId();
       }));
 
     let subtopics = this._subtopics;
     for (let i = 0; i < subtopics.length; i++) {
       topicSkillIds = topicSkillIds.concat(
-        subtopics[i].getSkillSummaries().map((skillSummary: SkillSummary) => {
+        subtopics[i].getSkillSummaries().map((
+            skillSummary: ShortSkillSummary) => {
           return skillSummary.getId();
         })
       );
@@ -233,7 +317,7 @@ export class Topic {
     return topicSkillIds;
   }
 
-  getSubtopicById(subtopicId: string): Subtopic | null {
+  getSubtopicById(subtopicId: number): Subtopic | null {
     for (let i = 0; i < this._subtopics.length; i++) {
       let id = this._subtopics[i].getId();
       if (id === subtopicId) {
@@ -253,7 +337,7 @@ export class Topic {
 
   // Attempts to remove a subtopic from this topic given the
   // subtopic ID.
-  deleteSubtopic(subtopicId: string, isNewlyCreated: boolean): void {
+  deleteSubtopic(subtopicId: number, isNewlyCreated: boolean): void {
     let subtopicDeleted = false;
     for (let i = 0; i < this._subtopics.length; i++) {
       if (this._subtopics[i].getId() === subtopicId) {
@@ -290,15 +374,15 @@ export class Topic {
     this._subtopics.length = 0;
   }
 
-  getSubtopics(): Array<Subtopic> {
+  getSubtopics(): Subtopic[] {
     return this._subtopics.slice();
   }
 
-  getCanonicalStoryReferences(): Array<StoryReference> {
+  getCanonicalStoryReferences(): StoryReference[] {
     return this._canonicalStoryReferences.slice();
   }
 
-  getCanonicalStoryIds(): Array<string> {
+  getCanonicalStoryIds(): string[] {
     return this._canonicalStoryReferences.map((reference: StoryReference) => {
       return reference.getStoryId();
     });
@@ -324,17 +408,39 @@ export class Topic {
     this._canonicalStoryReferences.splice(index, 1);
   }
 
+  rearrangeCanonicalStory(fromIndex: number, toIndex: number): void {
+    const canonicalStoryToMove = cloneDeep(
+      this._canonicalStoryReferences[fromIndex]);
+    this._canonicalStoryReferences.splice(fromIndex, 1);
+    this._canonicalStoryReferences.splice(toIndex, 0, canonicalStoryToMove);
+  }
+
+  rearrangeSkillInSubtopic(
+      subtopicId: number, fromIndex: number, toIndex: number): void {
+    const subtopic = this.getSubtopicById(subtopicId);
+    const skillToMove = cloneDeep(
+      subtopic.getSkillSummaries()[fromIndex]);
+    subtopic._skillSummaries.splice(fromIndex, 1);
+    subtopic._skillSummaries.splice(toIndex, 0, skillToMove);
+  }
+
+  rearrangeSubtopic(fromIndex: number, toIndex: number): void {
+    const subtopicToMove = cloneDeep(this._subtopics[fromIndex]);
+    this._subtopics.splice(fromIndex, 1);
+    this._subtopics.splice(toIndex, 0, subtopicToMove);
+  }
+
   clearCanonicalStoryReferences(): void {
     this._canonicalStoryReferences.length = 0;
   }
 
-  getAdditionalStoryIds(): Array<string> {
+  getAdditionalStoryIds(): string[] {
     return this._additionalStoryReferences.map((reference: StoryReference) => {
       return reference.getStoryId();
     });
   }
 
-  getAdditionalStoryReferences(): Array<StoryReference> {
+  getAdditionalStoryReferences(): StoryReference[] {
     return this._additionalStoryReferences.slice();
   }
 
@@ -364,7 +470,7 @@ export class Topic {
 
   hasUncategorizedSkill(skillId: string): boolean {
     return this._uncategorizedSkillSummaries.some(
-      (skillSummary: SkillSummary) => {
+      (skillSummary: ShortSkillSummary) => {
         return skillSummary.getId() === skillId;
       });
   }
@@ -390,7 +496,7 @@ export class Topic {
 
   removeUncategorizedSkill(skillId: string): void {
     let index = this._uncategorizedSkillSummaries.map(
-      (skillSummary: SkillSummary) => {
+      (skillSummary: ShortSkillSummary) => {
         return skillSummary.getId();
       }).indexOf(skillId);
     if (index === -1) {
@@ -403,7 +509,7 @@ export class Topic {
     this._uncategorizedSkillSummaries.length = 0;
   }
 
-  getUncategorizedSkillSummaries(): Array<SkillSummary> {
+  getUncategorizedSkillSummaries(): ShortSkillSummary[] {
     return this._uncategorizedSkillSummaries.slice();
   }
 
@@ -414,10 +520,13 @@ export class Topic {
     this._id = otherTopic.getId();
     this.setName(otherTopic.getName());
     this.setAbbreviatedName(otherTopic.getAbbreviatedName());
+    this.setUrlFragment(otherTopic.getUrlFragment());
     this.setThumbnailFilename(otherTopic.getThumbnailFilename());
     this.setThumbnailBgColor(otherTopic.getThumbnailBgColor());
     this.setDescription(otherTopic.getDescription());
     this.setLanguageCode(otherTopic.getLanguageCode());
+    this.setPracticeTabIsDisplayed(otherTopic.getPracticeTabIsDisplayed());
+    this.setMetaTagContent(otherTopic.getMetaTagContent());
     this._version = otherTopic.getVersion();
     this._nextSubtopicId = otherTopic.getNextSubtopicId();
     this.clearAdditionalStoryReferences();
@@ -448,28 +557,31 @@ export class TopicObjectFactory {
   constructor(
       private subtopicObjectFactory: SubtopicObjectFactory,
       private storyReferenceObjectFactory: StoryReferenceObjectFactory,
-      private skillSummaryObjectFactory: SkillSummaryObjectFactory) {}
-  // TODO(#7165): Replace any with exact type
-  create(topicBackendDict: any, skillIdToDescriptionDict: any): Topic {
-    let subtopics = topicBackendDict.subtopics.map((subtopic: Subtopic) => {
+      private skillSummaryObjectFactory: ShortSkillSummaryObjectFactory) {}
+  create(
+      topicBackendDict: TopicBackendDict,
+      skillIdToDescriptionDict: SkillIdToDescriptionMap): Topic {
+    let subtopics = topicBackendDict.subtopics.map((
+        subtopic: SubtopicBackendDict) => {
       return this.subtopicObjectFactory.create(
         subtopic, skillIdToDescriptionDict);
     });
     let canonicalStoryReferences =
         topicBackendDict.canonical_story_references.map(
-          (reference: StoryReference) => {
+          (reference: StoryReferenceBackendDict) => {
             return this.storyReferenceObjectFactory.createFromBackendDict(
               reference);
           });
     let additionalStoryReferences =
         topicBackendDict.additional_story_references.map(
-          (reference: StoryReference) => {
+          (reference: StoryReferenceBackendDict) => {
             return this.storyReferenceObjectFactory.createFromBackendDict(
               reference);
           });
     return new Topic(
       topicBackendDict.id, topicBackendDict.name,
       topicBackendDict.abbreviated_name,
+      topicBackendDict.url_fragment,
       topicBackendDict.description, topicBackendDict.language_code,
       canonicalStoryReferences, additionalStoryReferences,
       topicBackendDict.uncategorized_skill_ids,
@@ -477,7 +589,9 @@ export class TopicObjectFactory {
       subtopics, topicBackendDict.thumbnail_filename,
       topicBackendDict.thumbnail_bg_color,
       skillIdToDescriptionDict, this.skillSummaryObjectFactory,
-      this.subtopicObjectFactory, this.storyReferenceObjectFactory
+      this.subtopicObjectFactory, this.storyReferenceObjectFactory,
+      topicBackendDict.practice_tab_is_displayed,
+      topicBackendDict.meta_tag_content
     );
   }
 
@@ -485,10 +599,11 @@ export class TopicObjectFactory {
   // the actual topic is fetched from the backend.
   createInterstitialTopic(): Topic {
     return new Topic(
-      null, 'Topic name loading', 'Topic abbreviated name loading',
-      'Topic description loading', 'en', [], [], [], 1, 1, [], '', '', {},
+      null, 'Topic name loading', 'Abbrev. name loading',
+      'Url Fragment loading', 'Topic description loading', 'en',
+      [], [], [], 1, 1, [], '', '', {},
       this.skillSummaryObjectFactory, this.subtopicObjectFactory,
-      this.storyReferenceObjectFactory
+      this.storyReferenceObjectFactory, false, ''
     );
   }
 }
